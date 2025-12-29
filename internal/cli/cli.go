@@ -5,17 +5,23 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+	"github.com/julianwyz/git-buddy/internal/config"
+	"github.com/julianwyz/git-buddy/internal/llm"
 )
 
 type (
 	CLI struct {
-		runner *kong.Context `kong:"-"`
-
 		Commit Commit `cmd:"" help:"commit"`
+
+		runner *kong.Context `kong:"-"`
+		config *cliConfig
+		llm    *llm.LLM
 	}
 
 	Ctx struct {
 		context.Context
+		LLM        *llm.LLM
+		UserConfig *config.Config
 	}
 
 	ctxKey string
@@ -25,11 +31,26 @@ const (
 	ctxWD = ctxKey("working_directory")
 )
 
-func New() *CLI {
-	returner := &CLI{}
+func New(opts ...CLIOpt) (*CLI, error) {
+	returner := &CLI{
+		config: &cliConfig{},
+	}
+
+	for _, o := range opts {
+		if err := o(returner.config); err != nil {
+			return nil, err
+		}
+	}
+
 	returner.runner = kong.Parse(returner)
 
-	return returner
+	llm, err := llm.New(returner.config.userConfig.LLM)
+	if err != nil {
+		return nil, err
+	}
+	returner.llm = llm
+
+	return returner, nil
 }
 
 func (recv *CLI) Exec(ctx context.Context) error {
@@ -41,7 +62,9 @@ func (recv *CLI) Exec(ctx context.Context) error {
 	ctx = context.WithValue(ctx, ctxWD, cwd)
 
 	return recv.runner.Run(&Ctx{
-		Context: ctx,
+		Context:    ctx,
+		LLM:        recv.llm,
+		UserConfig: recv.config.userConfig,
 	})
 }
 

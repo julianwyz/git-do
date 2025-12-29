@@ -31,7 +31,7 @@ func StagedDiffs(
 	)
 }
 
-func ListStaged(ctx context.Context, wd string) (iter.Seq[string], error) {
+func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
 	if err := execGitCmd(
 		ctx,
@@ -46,9 +46,13 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq[string], error) {
 	}
 	scanner := bufio.NewScanner(fileList)
 
-	return func(yield func(string) bool) {
+	return func(yield func(string, error) bool) {
 		for scanner.Scan() {
-			if !yield(scanner.Text()) {
+			fileName := scanner.Text()
+			diffs := &bytes.Buffer{}
+			err := StagedDiffs(ctx, wd, fileName, diffs)
+
+			if !yield(diffs.String(), err) {
 				return
 			}
 		}
