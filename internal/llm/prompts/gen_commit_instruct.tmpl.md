@@ -53,7 +53,7 @@ On GENERATE:
 Output format (GitHub Flow):
 - First line: commit title
   - Imperative mood
-  - Concise and descriptive
+  - Concise overview of the changes included in the commit
   - Must be 50 characters or fewer
 - Blank line
 - Commit body:

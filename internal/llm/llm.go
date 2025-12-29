@@ -3,9 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"iter"
-	"log"
 	"text/template"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -41,7 +40,7 @@ var (
 	genCommitInstructions = func() *template.Template {
 		t, err := template.New("gen_commit_instruct.tmpl.md").Parse(genCommitInstSrc)
 		if err != nil {
-			log.Fatal(err.Error())
+			log.Fatal().Err(err).Msg("failed to parse commit instruction template")
 		}
 
 		return t
@@ -126,12 +125,12 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 	tokensOut += resp.Usage.OutputTokens
 	output := resp.OutputText()
 
-	fmt.Printf("Response:\n%s\n\n↑ %d / ↓ %d | %s\n",
-		output,
-		tokensIn,
-		tokensOut,
-		time.Since(startTime),
-	)
+	log.Debug().
+		Int64("input_tokens", tokensIn).
+		Int64("output_tokens", tokensOut).
+		Stringer("latency", time.Since(startTime)).
+		Msg("llm response")
+	log.Debug().Msgf("[llm output]: %s", output)
 
 	return output, nil
 }
