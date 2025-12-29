@@ -69,6 +69,11 @@ func Commit(
 		args,
 	)
 
+	if msg != nil {
+		// take from stdin
+		cmdLine = append(cmdLine, "-F", "-")
+	}
+
 	cmd := prepareGitCmd(
 		ctx,
 		wd,
@@ -77,11 +82,7 @@ func Commit(
 		cmdLine...,
 	)
 
-	if msg != nil {
-		// take from stdin
-		cmdLine = append(cmdLine, "-F", "-")
-		cmd.Stdin = msg
-	}
+	cmd.Stdin = msg
 
 	return cmd.Run()
 }

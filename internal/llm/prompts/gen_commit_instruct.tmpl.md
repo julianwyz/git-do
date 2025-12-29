@@ -54,6 +54,7 @@ Output format (GitHub Flow):
 - First line: commit title
   - Imperative mood
   - Concise and descriptive
+  - Must be 50 characters or fewer
 - Blank line
 - Commit body:
   - Describe what changed and why
