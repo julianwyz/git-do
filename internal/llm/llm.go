@@ -72,7 +72,7 @@ func New(c *config.LLM) (*LLM, error) {
 	}, nil
 }
 
-func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, error]) error {
+func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, error]) (string, error) {
 	startTime := time.Now()
 	instructions, err := execInstructionTmpl(
 		genCommitInstructions,
@@ -87,7 +87,7 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 
 	for patch, err := range commits {
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
@@ -119,20 +119,21 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 		},
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	tokensIn += resp.Usage.InputTokens
 	tokensOut += resp.Usage.OutputTokens
+	output := resp.OutputText()
 
 	fmt.Printf("Response:\n%s\n\n↑ %d / ↓ %d | %s\n",
-		resp.OutputText(),
+		output,
 		tokensIn,
 		tokensOut,
 		time.Since(startTime),
 	)
 
-	return nil
+	return output, nil
 }
 
 func execInstructionTmpl(t *template.Template, data any) (string, error) {

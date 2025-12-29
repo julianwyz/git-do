@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"iter"
 	"os"
@@ -18,7 +17,7 @@ func StagedDiffs(
 	target string,
 	dst io.Writer,
 ) error {
-	return execGitCmd(
+	return prepareGitCmd(
 		ctx,
 		wd,
 		dst,
@@ -28,12 +27,12 @@ func StagedDiffs(
 		"--cached",
 		"--raw",
 		target,
-	)
+	).Run()
 }
 
 func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
-	if err := execGitCmd(
+	if err := prepareGitCmd(
 		ctx,
 		wd,
 		fileList,
@@ -41,7 +40,7 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error
 		"diff",
 		"--name-only",
 		"--cached",
-	); err != nil {
+	).Run(); err != nil {
 		return nil, err
 	}
 	scanner := bufio.NewScanner(fileList)
@@ -61,40 +60,39 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error
 
 func Commit(
 	ctx context.Context,
-	wd,
-	msg string,
+	wd string,
+	msg io.Reader,
 	args ...string,
 ) error {
-	fmt.Println("MSG", msg)
-	fmt.Println("A", len(args), args)
-
 	cmdLine := slices.Concat(
 		[]string{"commit"},
 		args,
-		[]string{fmt.Sprintf("-m\"%s\"", msg)},
 	)
-	fmt.Println(cmdLine)
 
-	if err := execGitCmd(
+	cmd := prepareGitCmd(
 		ctx,
 		wd,
 		os.Stdout,
 		os.Stderr,
 		cmdLine...,
-	); err != nil {
-		return err
+	)
+
+	if msg != nil {
+		// take from stdin
+		cmdLine = append(cmdLine, "-F", "-")
+		cmd.Stdin = msg
 	}
 
-	return nil
+	return cmd.Run()
 }
 
-func execGitCmd(
+func prepareGitCmd(
 	ctx context.Context,
 	wd string,
 	stdout io.Writer,
 	stderr io.Writer,
 	args ...string,
-) error {
+) *exec.Cmd {
 	cmd := exec.CommandContext(
 		ctx,
 		"git", args...,
@@ -103,5 +101,5 @@ func execGitCmd(
 	cmd.Stderr = stderr
 	cmd.Dir = wd
 
-	return cmd.Run()
+	return cmd
 }

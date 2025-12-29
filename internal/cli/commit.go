@@ -1,17 +1,14 @@
 package cli
 
 import (
+	"bytes"
+
 	"github.com/julianwyz/git-buddy/internal/git"
 )
 
 type (
 	Commit struct {
 		Args []string `arg:"" optional:"" passthrough:"all"`
-	}
-
-	commitDiff struct {
-		File  string `json:"file"`
-		Diffs string `json:"diff"`
 	}
 )
 
@@ -25,18 +22,17 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		return err
 	}
 
-	if err := ctx.LLM.GenerateCommit(
+	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
 
-	/*git.Commit(
+	return git.Commit(
 		ctx,
 		wd,
-		"hello world",
+		bytes.NewBufferString(commitMsg),
 		recv.Args...,
-	)*/
-
-	return nil
+	)
 }
