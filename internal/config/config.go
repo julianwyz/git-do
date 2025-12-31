@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"io"
 	"io/fs"
 
 	"github.com/BurntSushi/toml"
@@ -13,15 +14,22 @@ type (
 		Language string  `toml:"language"`
 		LLM      *LLM    `toml:"llm"`
 		Commit   *Commit `toml:"commit"`
+
+		configFs fs.FS
 	}
 
 	LLM struct {
-		APIBase string `toml:"api_base"`
-		Model   string `toml:"model"`
+		APIBase string   `toml:"api_base"`
+		Model   string   `toml:"model"`
+		Context *Context `toml:"context"`
 	}
 
 	Commit struct {
-		Format CommitFormat `json:"format"`
+		Format CommitFormat `toml:"format"`
+	}
+
+	Context struct {
+		File string `toml:"file"`
 	}
 
 	CommitFormat string
@@ -34,6 +42,7 @@ const (
 
 var (
 	ErrNoConfig       = errors.New("no config file found")
+	ErrNoContext      = errors.New("no context file available")
 	ErrInvalidVersion = errors.New("unknown version specified")
 
 	configFileAliases = [...]string{
@@ -43,15 +52,6 @@ var (
 		".do.toml",
 	}
 )
-
-func Load(fp string) (*Config, error) {
-	var dst Config
-	if _, err := toml.DecodeFile(fp, &dst); err != nil {
-		return nil, err
-	}
-
-	return &dst, nil
-}
 
 func LoadFrom(fs fs.FS) (*Config, error) {
 	for _, variant := range configFileAliases {
@@ -69,9 +69,24 @@ func LoadFrom(fs fs.FS) (*Config, error) {
 				return nil, ErrInvalidVersion
 			}
 
+			dst.configFs = fs
 			return &dst, nil
 		}
 	}
 
 	return nil, ErrNoConfig
+}
+
+func (recv *Config) LoadContextFile() (io.ReadCloser, error) {
+	if recv.LLM == nil {
+		return nil, ErrNoContext
+	}
+	if recv.LLM.Context == nil {
+		return nil, ErrNoContext
+	}
+	if len(recv.LLM.Context.File) == 0 {
+		return nil, ErrNoContext
+	}
+
+	return recv.configFs.Open(recv.LLM.Context.File)
 }

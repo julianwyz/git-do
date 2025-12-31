@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"io"
 	"iter"
 	"text/template"
 	"time"
@@ -101,6 +102,25 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 
 	var tokensIn, tokensOut int64
 	var commitInput responses.ResponseInputParam
+
+	if recv.config != nil {
+		rc, err := recv.config.LoadContextFile()
+		if err == nil {
+			defer rc.Close()
+
+			msg := bytes.NewBufferString("CONTEXT\n")
+			if _, err := io.Copy(msg, rc); err == nil {
+				commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
+					OfMessage: &responses.EasyInputMessageParam{
+						Role: responses.EasyInputMessageRoleUser,
+						Content: responses.EasyInputMessageContentUnionParam{
+							OfString: param.NewOpt(msg.String()),
+						},
+					},
+				})
+			}
+		}
+	}
 
 	for patch, err := range commits {
 		if err != nil {
