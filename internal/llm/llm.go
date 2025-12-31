@@ -9,7 +9,7 @@ import (
 
 	_ "embed"
 
-	"github.com/julianwyz/git-buddy/internal/config"
+	"github.com/julianwyz/git-do/internal/config"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"

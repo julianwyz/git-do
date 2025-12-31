@@ -1,6 +1,6 @@
 package cli
 
-import "github.com/julianwyz/git-buddy/internal/config"
+import "github.com/julianwyz/git-do/internal/config"
 
 type (
 	cliConfig struct {

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/julianwyz/git-buddy/internal/cli"
-	"github.com/julianwyz/git-buddy/internal/config"
+	"github.com/julianwyz/git-do/internal/cli"
+	"github.com/julianwyz/git-do/internal/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

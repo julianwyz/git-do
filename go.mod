@@ -1,4 +1,4 @@
-module github.com/julianwyz/git-buddy
+module github.com/julianwyz/git-do
 
 go 1.25.1
 

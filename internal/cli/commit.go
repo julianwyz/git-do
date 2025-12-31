@@ -3,7 +3,7 @@ package cli
 import (
 	"bytes"
 
-	"github.com/julianwyz/git-buddy/internal/git"
+	"github.com/julianwyz/git-do/internal/git"
 )
 
 type (

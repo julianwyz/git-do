@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/julianwyz/git-buddy/internal/config"
-	"github.com/julianwyz/git-buddy/internal/llm"
+	"github.com/julianwyz/git-do/internal/config"
+	"github.com/julianwyz/git-do/internal/llm"
 )
 
 type (
