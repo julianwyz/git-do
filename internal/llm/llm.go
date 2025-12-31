@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"iter"
 	"text/template"
@@ -38,6 +39,8 @@ const (
 )
 
 var (
+	ErrNoPatches = errors.New("no changes to commit")
+
 	//go:embed prompts/gen_commit_instruct.tmpl.md
 	genCommitInstSrc      string
 	genCommitInstructions = func() *template.Template {
@@ -100,7 +103,7 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 		instructionData,
 	)
 
-	var tokensIn, tokensOut int64
+	var tokensIn, tokensOut, patchCount int64
 	var commitInput responses.ResponseInputParam
 
 	if recv.config != nil {
@@ -123,6 +126,7 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 	}
 
 	for patch, err := range commits {
+		patchCount++
 		if err != nil {
 			return "", err
 		}
@@ -135,6 +139,10 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 				},
 			},
 		})
+	}
+
+	if patchCount == 0 {
+		return "", ErrNoPatches
 	}
 
 	commitInput = append(commitInput, responses.ResponseInputItemUnionParam{

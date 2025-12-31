@@ -29,6 +29,7 @@ In addition to this project being used by other git repositories, this project _
 
 # Project technical specifications
 
-| Programming Language    | Golang >= v1.25   |
-|-------------------------|-------------------|
+|  |  |
+|---|---|
+| Programming Language | Golang |
 | Development task runner | `task` / Taskfile |
