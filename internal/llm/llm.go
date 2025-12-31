@@ -47,27 +47,29 @@ var (
 	}()
 )
 
-func New(c *config.LLM) (*LLM, error) {
-	model := defaultModel
-	oaiOpts := []option.RequestOption{}
-	if c != nil {
-		if len(c.APIBase) > 0 {
-			oaiOpts = append(oaiOpts, option.WithBaseURL(c.APIBase))
-		}
-		if len(c.APIKey) > 0 {
-			oaiOpts = append(oaiOpts, option.WithAPIKey(c.APIKey))
-		}
-		if len(c.Model) > 0 {
-			model = c.Model
+func New(
+	opts ...LLMOpt,
+) (*LLM, error) {
+	config := &llmConfig{
+		model: defaultModel,
+	}
+	for _, o := range opts {
+		if err := o(config); err != nil {
+			return nil, err
 		}
 	}
 
-	client := openai.NewClient(oaiOpts...)
+	client := openai.NewClient(
+		option.WithBaseURL(config.apiBase),
+		option.WithAPIKey(config.apiKey),
+	)
+	log.Debug().
+		Str("base", config.apiBase).
+		Msg("configured llm client")
 
 	return &LLM{
-		config: c,
 		client: &client,
-		model:  model,
+		model:  config.model,
 	}, nil
 }
 
@@ -130,7 +132,7 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 		Int64("output_tokens", tokensOut).
 		Stringer("latency", time.Since(startTime)).
 		Msg("llm response")
-	log.Debug().Msgf("[llm output]: %s", output)
+	log.Debug().Msgf("llm output:\n%s", output)
 
 	return output, nil
 }

@@ -13,10 +13,8 @@ type (
 )
 
 func (recv *Commit) Run(ctx *Ctx) error {
-	wd := ctx.Value(ctxWD).(string)
-
 	seq, err := git.ListStaged(
-		ctx, wd,
+		ctx, ctx.WorkingDir,
 	)
 	if err != nil {
 		return err
@@ -31,7 +29,7 @@ func (recv *Commit) Run(ctx *Ctx) error {
 
 	return git.Commit(
 		ctx,
-		wd,
+		ctx.WorkingDir,
 		bytes.NewBufferString(commitMsg),
 		recv.Args...,
 	)

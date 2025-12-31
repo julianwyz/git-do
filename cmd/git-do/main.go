@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/julianwyz/git-do/internal/cli"
-	"github.com/julianwyz/git-do/internal/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -21,29 +19,12 @@ func init() {
 }
 
 func main() {
-
 	ctx, cancel := context.WithCancel(
 		context.Background(),
 	)
 	defer cancel()
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal().Err(err).
-			Msg("unable to determine home directory")
-	}
-
-	userConfig, err := config.Load(
-		filepath.Join(home, "buddy.toml"),
-	)
-	if err != nil {
-		log.Fatal().Err(err).
-			Msg("cannot find configuration file in your home directory")
-	}
-
-	cli, err := cli.New(
-		cli.WithConfig(userConfig),
-	)
+	cli, err := cli.New()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize cli")
 	}

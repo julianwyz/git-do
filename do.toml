@@ -1,0 +1,5 @@
+version = "1"
+
+[llm]
+api_base = "https://api.openai.com/v1"
+model = "gpt-5-mini"
