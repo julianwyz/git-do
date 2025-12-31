@@ -9,14 +9,27 @@ import (
 
 type (
 	Config struct {
-		Version string `toml:"version"`
-		LLM     *LLM   `toml:"llm"`
+		Version  string  `toml:"version"`
+		Language string  `toml:"language"`
+		LLM      *LLM    `toml:"llm"`
+		Commit   *Commit `toml:"commit"`
 	}
 
 	LLM struct {
 		APIBase string `toml:"api_base"`
 		Model   string `toml:"model"`
 	}
+
+	Commit struct {
+		Format CommitFormat `json:"format"`
+	}
+
+	CommitFormat string
+)
+
+const (
+	GithubCommitFormat       = CommitFormat("github")
+	ConventionalCommitFormat = CommitFormat("conventional")
 )
 
 var (

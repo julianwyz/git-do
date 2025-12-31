@@ -19,7 +19,7 @@ import (
 
 type (
 	LLM struct {
-		config *config.LLM
+		config *config.Config
 		client *openai.Client
 		model  string
 	}
@@ -31,7 +31,9 @@ type (
 )
 
 const (
-	defaultModel = "gpt-5-mini"
+	defaultModel        = "gpt-5-mini"
+	defaultLang         = "en-US"
+	defaultCommitFormat = "github"
 )
 
 var (
@@ -68,6 +70,7 @@ func New(
 		Msg("configured llm client")
 
 	return &LLM{
+		config: config.config,
 		client: &client,
 		model:  config.model,
 	}, nil
@@ -75,12 +78,25 @@ func New(
 
 func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, error]) (string, error) {
 	startTime := time.Now()
+
+	instructionData := &instructionsTemplateData{
+		Language: defaultLang,
+		Format:   defaultCommitFormat,
+	}
+	if recv.config != nil {
+		if len(recv.config.Language) > 0 {
+			instructionData.Language = recv.config.Language
+		}
+		if recv.config.Commit != nil {
+			if len(recv.config.Commit.Format) > 0 {
+				instructionData.Format = string(recv.config.Commit.Format)
+			}
+		}
+	}
+
 	instructions, err := execInstructionTmpl(
 		genCommitInstructions,
-		instructionsTemplateData{
-			Language: "en-US",
-			Format:   "github",
-		},
+		instructionData,
 	)
 
 	var tokensIn, tokensOut int64

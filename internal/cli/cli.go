@@ -90,7 +90,10 @@ func (recv *CLI) configureLLM(
 	cfg *config.Config,
 	creds *credentials.Credentials,
 ) (*llm.LLM, error) {
-	opts := []llm.LLMOpt{}
+	opts := []llm.LLMOpt{
+		llm.WithConfig(cfg),
+	}
+
 	if cfg != nil && cfg.LLM != nil {
 		if len(cfg.LLM.APIBase) > 0 {
 			opts = append(opts, llm.WithAPIBase(cfg.LLM.APIBase))
