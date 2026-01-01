@@ -11,6 +11,22 @@ import (
 	"slices"
 )
 
+func HelpOf(
+	ctx context.Context,
+	wd,
+	cmd string,
+	dst io.Writer,
+) error {
+	return prepareGitCmd(
+		ctx,
+		wd,
+		dst,
+		dst,
+		cmd,
+		"--help",
+	).Run()
+}
+
 func StagedDiffs(
 	ctx context.Context,
 	wd,

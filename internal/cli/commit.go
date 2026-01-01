@@ -8,7 +8,7 @@ import (
 
 type (
 	Commit struct {
-		Args []string `arg:"" optional:"" passthrough:"all"`
+		Args []string `arg:"" help:"" optional:"" passthrough:"all"`
 	}
 )
 
@@ -33,4 +33,8 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		bytes.NewBufferString(commitMsg),
 		recv.Args...,
 	)
+}
+
+func (recv *Commit) Help() string {
+	return "hello help"
 }

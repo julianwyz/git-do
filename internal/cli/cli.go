@@ -28,8 +28,6 @@ type (
 		HomeDir    string
 		WorkingDir string
 	}
-
-	ctxKey string
 )
 
 func New(opts ...CLIOpt) (*CLI, error) {
@@ -56,7 +54,11 @@ func New(opts ...CLIOpt) (*CLI, error) {
 		return nil, err
 	}
 
-	returner.runner = kong.Parse(returner)
+	returner.runner = kong.Parse(
+		returner,
+		kong.Name("git do"),
+		kong.Help(returner.OutputHelp(os.Stdout)),
+	)
 
 	return returner, nil
 }
