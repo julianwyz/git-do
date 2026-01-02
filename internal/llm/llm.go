@@ -183,6 +183,19 @@ func (recv *LLM) GenerateCommit(
 		})
 	}
 
+	if len(config.instructions) > 0 {
+		msg := fmt.Sprintf("INSTRUCTIONS\n%s", config.instructions)
+
+		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
+			OfMessage: &responses.EasyInputMessageParam{
+				Role: responses.EasyInputMessageRoleUser,
+				Content: responses.EasyInputMessageContentUnionParam{
+					OfString: param.NewOpt(msg),
+				},
+			},
+		})
+	}
+
 	commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
 		OfMessage: &responses.EasyInputMessageParam{
 			Role: responses.EasyInputMessageRoleUser,

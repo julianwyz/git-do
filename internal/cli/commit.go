@@ -30,12 +30,21 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		return err
 	}
 
+	msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
+
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
+		llm.CommitWithInstructions(msgVal),
 	)
 	if err != nil {
 		return err
+	}
+
+	if foundMsg {
+		for _, i := range msgIndices {
+			recv.Args = slices.Delete(recv.Args, i, i+1)
+		}
 	}
 
 	return git.Commit(
@@ -61,6 +70,8 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 		return err
 	}
 
+	msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
+
 	seq, err := git.ListCommitChanges(
 		ctx, ctx.WorkingDir,
 		headRef,
@@ -72,9 +83,16 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
+		llm.CommitWithInstructions(msgVal),
 	)
 	if err != nil {
 		return err
+	}
+
+	if foundMsg {
+		for _, i := range msgIndices {
+			recv.Args = slices.Delete(recv.Args, i, i+1)
+		}
 	}
 
 	args := slices.Concat(

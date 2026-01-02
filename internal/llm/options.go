@@ -17,12 +17,21 @@ type (
 	}
 
 	commitConfig struct {
-		resolutions []string
+		resolutions  []string
+		instructions string
 	}
 
 	LLMOpt    func(*llmConfig) error
 	CommitOpt func(*commitConfig) error
 )
+
+func CommitWithInstructions(i string) CommitOpt {
+	return func(cc *commitConfig) error {
+		cc.instructions = i
+
+		return nil
+	}
+}
 
 func CommitWithResolutions(rs ...string) CommitOpt {
 	return func(cc *commitConfig) error {

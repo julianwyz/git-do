@@ -109,7 +109,6 @@ func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, e
 		"-r",
 		ref,
 	).Run(); err != nil {
-		fmt.Println("ERR")
 		return nil, err
 	}
 	scanner := bufio.NewScanner(fileList)
@@ -188,6 +187,45 @@ func Commit(
 	cmd.Stdin = msg
 
 	return cmd.Run()
+}
+
+func ExtractFlag(args []string, target string) (value string, found bool, positions []int) {
+	for i, a := range args {
+		if strings.HasPrefix(a, target) {
+			if len(a) > len(target) {
+				// this may be a -f=foo
+				// or -f"foo" format
+				if a[len(target)] == '=' {
+					value = a[len(target)+1:]
+				} else {
+					value = a[len(target):]
+				}
+			} else {
+				// may be in next position
+				if i+1 < len(args) {
+					value = args[i+1]
+					positions = append(positions, i+1)
+				}
+			}
+
+			positions = append(positions, i)
+			break
+		}
+	}
+
+	value = strings.TrimSpace(value)
+
+	if len(value) > 0 {
+		switch {
+		case strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\""),
+			strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'"):
+			value = value[1 : len(value)-1]
+		}
+	}
+
+	found = len(value) > 0
+
+	return
 }
 
 func prepareGitCmd(

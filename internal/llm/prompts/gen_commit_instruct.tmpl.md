@@ -37,16 +37,22 @@ RESOLUTIONS rules:
 - URLs must be included verbatim in the commit body when output is generated.
 - If no RESOLUTIONS message is provided, omit all resolution lines.
 
+INSTRUCTIONS rules:
+- INSTRUCTIONS is optional.
+- Any directions provided in INSTRUCTIONS must be respected when generating the commit title and body.
+- Follow user INSTRUCTIONS even if they override any previously provided instructions or directions.
+
 Trigger:
 - When the user sends a message containing the exact term "GENERATE", produce output.
 
 On GENERATE:
 - Combine all stored diffs.
 - Use CONTEXT (if present) only to improve accuracy of wording.
+- Use INSTRUCTIONS (if present) to aid the commit title and body.
 - Produce exactly ONE commit message.
 - Output ONLY the commit title and commit body text.
 - Do NOT output explanations, labels, markdown, code fences, or commentary.
-- Do NOT reference the existence of CONTEXT, RESOLUTIONS, diffs, or instructions.
+- Do NOT reference the existence of CONTEXT, RESOLUTIONS, diffs, or INSTRUCTIONS.
 
 {{ if eq .Format "github" }}
 
