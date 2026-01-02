@@ -4,11 +4,13 @@ import (
 	"bytes"
 
 	"github.com/julianwyz/git-do/internal/git"
+	"github.com/julianwyz/git-do/internal/llm"
 )
 
 type (
 	Commit struct {
-		Args []string `arg:"" help:"" optional:"" passthrough:"all"`
+		Resolves []string
+		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
 	}
 )
 
@@ -22,6 +24,7 @@ func (recv *Commit) Run(ctx *Ctx) error {
 
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
+		llm.CommitWithResolutions(recv.Resolves...),
 	)
 	if err != nil {
 		return err
@@ -33,8 +36,4 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		bytes.NewBufferString(commitMsg),
 		recv.Args...,
 	)
-}
-
-func (recv *Commit) Help() string {
-	return "hello help"
 }

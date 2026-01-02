@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"iter"
+	"strings"
 	"text/template"
 	"time"
 
@@ -94,7 +96,18 @@ func New(
 	}, nil
 }
 
-func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, error]) (string, error) {
+func (recv *LLM) GenerateCommit(
+	ctx context.Context,
+	commits iter.Seq2[string, error],
+	opts ...CommitOpt,
+) (string, error) {
+	config := &commitConfig{}
+	for _, o := range opts {
+		if err := o(config); err != nil {
+			return "", err
+		}
+	}
+
 	startTime := time.Now()
 
 	instructionData := &instructionsTemplateData{
@@ -154,6 +167,20 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 
 	if patchCount == 0 {
 		return "", ErrNoPatches
+	}
+
+	if len(config.resolutions) > 0 {
+		msg := fmt.Sprintf("RESOLUTIONS\n%s",
+			strings.Join(config.resolutions, "\n"))
+
+		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
+			OfMessage: &responses.EasyInputMessageParam{
+				Role: responses.EasyInputMessageRoleUser,
+				Content: responses.EasyInputMessageContentUnionParam{
+					OfString: param.NewOpt(msg),
+				},
+			},
+		})
 	}
 
 	commitInput = append(commitInput, responses.ResponseInputItemUnionParam{

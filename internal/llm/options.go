@@ -16,8 +16,21 @@ type (
 		contextLoader contextLoader
 	}
 
-	LLMOpt func(*llmConfig) error
+	commitConfig struct {
+		resolutions []string
+	}
+
+	LLMOpt    func(*llmConfig) error
+	CommitOpt func(*commitConfig) error
 )
+
+func CommitWithResolutions(rs ...string) CommitOpt {
+	return func(cc *commitConfig) error {
+		cc.resolutions = append(cc.resolutions, rs...)
+
+		return nil
+	}
+}
 
 func WithOutputLanguage(l language.Tag) LLMOpt {
 	return func(lc *llmConfig) error {
