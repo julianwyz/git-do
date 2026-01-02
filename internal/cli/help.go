@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/alecthomas/kong"
-	"github.com/julianwyz/git-do/internal/git"
 )
 
 func (recv *CLI) OutputHelp(to io.Writer) kong.HelpPrinter {
@@ -14,12 +13,7 @@ func (recv *CLI) OutputHelp(to io.Writer) kong.HelpPrinter {
 
 		switch cli.Command() {
 		case "commit":
-			return git.HelpOf(
-				ctx,
-				recv.cwd,
-				"commit",
-				to,
-			)
+			return recv.Commit.Help(ctx, to)
 		}
 
 		return nil

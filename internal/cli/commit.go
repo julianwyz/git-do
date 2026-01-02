@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"io"
 
 	"github.com/julianwyz/git-do/internal/git"
 	"github.com/julianwyz/git-do/internal/llm"
@@ -10,6 +12,7 @@ import (
 type (
 	Commit struct {
 		Resolves []string
+		Amend    bool
 		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
 	}
 )
@@ -35,5 +38,14 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		ctx.WorkingDir,
 		bytes.NewBufferString(commitMsg),
 		recv.Args...,
+	)
+}
+
+func (recv *Commit) Help(ctx context.Context, dst io.Writer) error {
+	return git.HelpOf(
+		ctx,
+		"",
+		"commit",
+		dst,
 	)
 }
