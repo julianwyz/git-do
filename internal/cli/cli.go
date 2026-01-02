@@ -9,6 +9,7 @@ import (
 	"github.com/julianwyz/git-do/internal/config"
 	"github.com/julianwyz/git-do/internal/credentials"
 	"github.com/julianwyz/git-do/internal/llm"
+	"golang.org/x/text/language"
 )
 
 type (
@@ -93,7 +94,18 @@ func (recv *CLI) configureLLM(
 	creds *credentials.Credentials,
 ) (*llm.LLM, error) {
 	opts := []llm.LLMOpt{
-		llm.WithConfig(cfg),
+		llm.WithCommitFormat(cfg.Commit.Format),
+		llm.WithContextLoader(cfg),
+	}
+
+	if len(cfg.Language) > 0 {
+		tag, err := language.Parse(cfg.Language)
+		if err != nil {
+			// user supplied an invalid language tag
+			return nil, err
+		}
+
+		opts = append(opts, llm.WithOutputLanguage(tag))
 	}
 
 	if cfg != nil && cfg.LLM != nil {
@@ -102,6 +114,14 @@ func (recv *CLI) configureLLM(
 		}
 		if len(cfg.LLM.Model) > 0 {
 			opts = append(opts, llm.WithModel(cfg.LLM.Model))
+		}
+
+		if cfg.LLM.Reasoning != nil {
+			if len(cfg.LLM.Reasoning.Level) > 0 {
+				opts = append(opts, llm.WithReasoningLevel(
+					cfg.LLM.Reasoning.Level,
+				))
+			}
 		}
 	}
 

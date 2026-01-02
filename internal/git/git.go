@@ -11,6 +11,15 @@ import (
 	"slices"
 )
 
+type (
+	CommitFormat string
+)
+
+const (
+	CommitFormatGithub       = CommitFormat("github")
+	CommitFormatConventional = CommitFormat("conventional")
+)
+
 func HelpOf(
 	ctx context.Context,
 	wd,

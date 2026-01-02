@@ -6,6 +6,8 @@ import (
 	"io/fs"
 
 	"github.com/BurntSushi/toml"
+	"github.com/julianwyz/git-do/internal/git"
+	"github.com/julianwyz/git-do/internal/llm"
 )
 
 type (
@@ -19,25 +21,23 @@ type (
 	}
 
 	LLM struct {
-		APIBase string   `toml:"api_base"`
-		Model   string   `toml:"model"`
-		Context *Context `toml:"context"`
+		APIBase   string     `toml:"api_base"`
+		Model     string     `toml:"model"`
+		Context   *Context   `toml:"context"`
+		Reasoning *Reasoning `toml:"reasoning"`
+	}
+
+	Reasoning struct {
+		Level llm.ReasoningLevel `toml:"level"`
 	}
 
 	Commit struct {
-		Format CommitFormat `toml:"format"`
+		Format git.CommitFormat `toml:"format"`
 	}
 
 	Context struct {
 		File string `toml:"file"`
 	}
-
-	CommitFormat string
-)
-
-const (
-	GithubCommitFormat       = CommitFormat("github")
-	ConventionalCommitFormat = CommitFormat("conventional")
 )
 
 var (

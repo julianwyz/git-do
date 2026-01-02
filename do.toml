@@ -9,5 +9,8 @@ model = "gpt-5-mini"
 [llm.context]
 file = "CONTEXT.md"
 
+[llm.reasoning]
+level = "minimal"
+
 [commit]
 format = "github"

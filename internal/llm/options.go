@@ -1,21 +1,43 @@
 package llm
 
-import "github.com/julianwyz/git-do/internal/config"
+import (
+	"github.com/julianwyz/git-do/internal/git"
+	"golang.org/x/text/language"
+)
 
 type (
 	llmConfig struct {
-		apiBase string
-		apiKey  string
-		model   string
-		config  *config.Config
+		commitFormat  git.CommitFormat
+		outputLang    *language.Tag
+		apiBase       string
+		apiKey        string
+		model         string
+		reasoning     ReasoningLevel
+		contextLoader contextLoader
 	}
 
 	LLMOpt func(*llmConfig) error
 )
 
-func WithConfig(c *config.Config) LLMOpt {
+func WithOutputLanguage(l language.Tag) LLMOpt {
 	return func(lc *llmConfig) error {
-		lc.config = c
+		lc.outputLang = &l
+
+		return nil
+	}
+}
+
+func WithCommitFormat(format git.CommitFormat) LLMOpt {
+	return func(lc *llmConfig) error {
+		lc.commitFormat = format
+
+		return nil
+	}
+}
+
+func WithContextLoader(l contextLoader) LLMOpt {
+	return func(lc *llmConfig) error {
+		lc.contextLoader = l
 
 		return nil
 	}
@@ -40,6 +62,14 @@ func WithAPIKey(key string) LLMOpt {
 func WithModel(m string) LLMOpt {
 	return func(lc *llmConfig) error {
 		lc.model = m
+
+		return nil
+	}
+}
+
+func WithReasoningLevel(l ReasoningLevel) LLMOpt {
+	return func(lc *llmConfig) error {
+		lc.reasoning = l
 
 		return nil
 	}

@@ -11,36 +11,51 @@ import (
 
 	_ "embed"
 
-	"github.com/julianwyz/git-do/internal/config"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
+	"github.com/openai/openai-go/v3/shared"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/text/language"
 )
 
 type (
 	LLM struct {
-		config *config.Config
 		client *openai.Client
-		model  string
+		config *llmConfig
 	}
+
+	ReasoningLevel string
 
 	instructionsTemplateData struct {
 		Language string
 		Format   string
 	}
+
+	contextLoader interface {
+		LoadContextFile() (io.ReadCloser, error)
+	}
 )
 
 const (
 	defaultModel        = "gpt-5-mini"
-	defaultLang         = "en-US"
 	defaultCommitFormat = "github"
+)
+
+const (
+	ReasoningLevelNone    = ReasoningLevel("none")
+	ReasoningLevelMinimal = ReasoningLevel("minimal")
+	ReasoningLevelLow     = ReasoningLevel("low")
+	ReasoningLevelMedium  = ReasoningLevel("medium")
+	ReasoningLevelHigh    = ReasoningLevel("high")
+	ReasoningLevelXHigh   = ReasoningLevel("xhigh")
 )
 
 var (
 	ErrNoPatches = errors.New("no changes to commit")
 
+	defaultLang = language.AmericanEnglish
 	//go:embed prompts/gen_commit_instruct.tmpl.md
 	genCommitInstSrc      string
 	genCommitInstructions = func() *template.Template {
@@ -74,9 +89,8 @@ func New(
 		Msg("configured llm client")
 
 	return &LLM{
-		config: config.config,
+		config: config,
 		client: &client,
-		model:  config.model,
 	}, nil
 }
 
@@ -84,18 +98,15 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 	startTime := time.Now()
 
 	instructionData := &instructionsTemplateData{
-		Language: defaultLang,
+		Language: defaultLang.String(),
 		Format:   defaultCommitFormat,
 	}
-	if recv.config != nil {
-		if len(recv.config.Language) > 0 {
-			instructionData.Language = recv.config.Language
-		}
-		if recv.config.Commit != nil {
-			if len(recv.config.Commit.Format) > 0 {
-				instructionData.Format = string(recv.config.Commit.Format)
-			}
-		}
+
+	if recv.config.outputLang != nil {
+		instructionData.Language = recv.config.outputLang.String()
+	}
+	if len(recv.config.commitFormat) > 0 {
+		instructionData.Format = string(recv.config.commitFormat)
 	}
 
 	instructions, err := execInstructionTmpl(
@@ -106,8 +117,8 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 	var tokensIn, tokensOut, patchCount int64
 	var commitInput responses.ResponseInputParam
 
-	if recv.config != nil {
-		rc, err := recv.config.LoadContextFile()
+	if recv.config.contextLoader != nil {
+		rc, err := recv.config.contextLoader.LoadContextFile()
 		if err == nil {
 			defer rc.Close()
 
@@ -154,14 +165,22 @@ func (recv *LLM) GenerateCommit(ctx context.Context, commits iter.Seq2[string, e
 		},
 	})
 
-	resp, err := recv.client.Responses.New(
-		ctx, responses.ResponseNewParams{
-			Model:        recv.model,
-			Instructions: param.NewOpt(instructions),
-			Input: responses.ResponseNewParamsInputUnion{
-				OfInputItemList: commitInput,
-			},
+	respParams := responses.ResponseNewParams{
+		Model:        recv.config.model,
+		Instructions: param.NewOpt(instructions),
+		Input: responses.ResponseNewParamsInputUnion{
+			OfInputItemList: commitInput,
 		},
+	}
+
+	if len(recv.config.reasoning) > 0 {
+		respParams.Reasoning = shared.ReasoningParam{
+			Effort: shared.ReasoningEffort(recv.config.reasoning),
+		}
+	}
+
+	resp, err := recv.client.Responses.New(
+		ctx, respParams,
 	)
 	if err != nil {
 		return "", err

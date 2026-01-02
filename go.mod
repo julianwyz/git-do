@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/openai/openai-go/v3 v3.15.0
 	github.com/rs/zerolog v1.34.0
+	golang.org/x/text v0.32.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
