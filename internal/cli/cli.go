@@ -31,7 +31,7 @@ type (
 	}
 )
 
-const Version = "0.0.0"
+const Version = "0.1.0"
 
 func New(opts ...CLIOpt) (*CLI, error) {
 	var (
