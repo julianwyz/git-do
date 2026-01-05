@@ -53,6 +53,7 @@ On GENERATE:
 - Output ONLY the commit title and commit body text.
 - Do NOT output explanations, labels, markdown, code fences, or commentary.
 - Do NOT reference the existence of CONTEXT, RESOLUTIONS, diffs, or INSTRUCTIONS.
+- Attempt to derive the _why_ things were changed not just the _what_ and explain this _why_.
 
 {{ if eq .Format "github" }}
 
