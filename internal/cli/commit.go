@@ -17,6 +17,7 @@ type (
 	Commit struct {
 		Resolves []string
 		Amend    bool
+		Trailer  bool     `default:"true" negatable:""`
 		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
 	}
 )
@@ -54,9 +55,11 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		}
 	}
 
-	commitMsg += fmt.Sprintf("\n\n%s",
-		recv.commitTrailer(ctx),
-	)
+	if recv.Trailer {
+		commitMsg += fmt.Sprintf("\n\n%s",
+			recv.commitTrailer(ctx),
+		)
+	}
 
 	log.Debug().Msgf("commit msg:\n%s", commitMsg)
 
