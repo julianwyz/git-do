@@ -13,6 +13,7 @@ import (
 
 	_ "embed"
 
+	tld "github.com/jpillora/go-tld"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"
@@ -26,6 +27,7 @@ type (
 	LLM struct {
 		client *openai.Client
 		config *llmConfig
+		apiUrl *tld.URL
 	}
 
 	ReasoningLevel string
@@ -82,6 +84,11 @@ func New(
 		}
 	}
 
+	parsedAPIUrl, err := tld.Parse(config.apiBase)
+	if err != nil {
+		return nil, err
+	}
+
 	client := openai.NewClient(
 		option.WithBaseURL(config.apiBase),
 		option.WithAPIKey(config.apiKey),
@@ -91,6 +98,7 @@ func New(
 		Msg("configured llm client")
 
 	return &LLM{
+		apiUrl: parsedAPIUrl,
 		config: config,
 		client: &client,
 	}, nil
@@ -235,9 +243,19 @@ func (recv *LLM) GenerateCommit(
 		Int64("output_tokens", tokensOut).
 		Stringer("latency", time.Since(startTime)).
 		Msg("llm response")
-	log.Debug().Msgf("llm output:\n%s", output)
 
 	return output, nil
+}
+
+func (recv *LLM) GetModel() string {
+	return recv.config.model
+}
+
+func (recv *LLM) GetAPIDomain() string {
+	return fmt.Sprintf("%s.%s",
+		recv.apiUrl.Domain,
+		recv.apiUrl.TLD,
+	)
 }
 
 func execInstructionTmpl(t *template.Template, data any) (string, error) {

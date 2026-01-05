@@ -5,6 +5,7 @@ go 1.25.1
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/alecthomas/kong v1.13.0
+	github.com/jpillora/go-tld v1.2.1
 	github.com/openai/openai-go/v3 v3.15.0
 	github.com/rs/zerolog v1.34.0
 	golang.org/x/text v0.32.0
@@ -19,5 +20,6 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 )

@@ -3,11 +3,14 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"slices"
+	"strings"
 
 	"github.com/julianwyz/git-do/internal/git"
 	"github.com/julianwyz/git-do/internal/llm"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -16,6 +19,10 @@ type (
 		Amend    bool
 		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
 	}
+)
+
+const (
+	messageGenTrailerName = "Message-generated-by"
 )
 
 func (recv *Commit) Run(ctx *Ctx) error {
@@ -46,6 +53,12 @@ func (recv *Commit) Run(ctx *Ctx) error {
 			recv.Args = slices.Delete(recv.Args, i, i+1)
 		}
 	}
+
+	commitMsg += fmt.Sprintf("\n\n%s",
+		recv.commitTrailer(ctx),
+	)
+
+	log.Debug().Msgf("commit msg:\n%s", commitMsg)
 
 	return git.Commit(
 		ctx,
@@ -106,4 +119,27 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 		bytes.NewBufferString(commitMsg),
 		args...,
 	)
+}
+
+func (recv *Commit) commitTrailer(ctx *Ctx) string {
+	components := [][]string{
+		{
+			"git-do",
+			Version,
+		},
+	}
+
+	if ctx != nil && ctx.LLM != nil {
+		components = append(components, []string{
+			ctx.LLM.GetAPIDomain(), ctx.LLM.GetModel(),
+		})
+	}
+
+	returner := messageGenTrailerName + ": "
+	for _, c := range components {
+		returner += strings.Join(c, "/")
+		returner += " "
+	}
+
+	return strings.TrimSpace(returner)
 }
