@@ -27,6 +27,22 @@ Regardless of name or extension, the configuration language support is TOML.
 
 In addition to this project being used by other git repositories, this project _itself_ contains a `do.toml` file that is used to use `git-do` in its own git repository.
 
+# Version commits
+
+When CLI releases are prepared, there will be a change to the `Version` constant in the `internal/cli/cli.go` file. 
+
+When the `Version` constant is the ONLY diff in a `git do commit` action, the commit message MUST be the following format:
+
+```
+v[value of Version constant]
+```
+
+With ONLY a commit title and no body. For example, if the `Version` value is `0.0.0`, the commit message should be:
+
+```
+v0.0.0
+```
+
 # Project technical specifications
 
 |  |  |
