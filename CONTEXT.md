@@ -8,7 +8,7 @@ This project is called `git-do`. It is an addon for the `git` CLI that adds a `g
 
 When generating commit messages using `git do commit`, be sure to analyze the diffs and make a distinction between changes to this project's internals and any user-facing changes.
 
-Be sure to explicitly call out user-facing CLI changes for consumer's of this project to be aware of.
+Be sure to explicitly call out user-facing CLI changes for consumer's of this project to be aware of. If there are no user-facing changes, omit this callout entirely.
 
 # Use-case
 
