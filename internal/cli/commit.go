@@ -20,7 +20,7 @@ type (
 		Message  string   `long:"m" short:"m"`
 		Amend    bool
 		Trailer  bool     `default:"true" negatable:""`
-		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
+		Args     []string `arg:"" optional:"" passthrough:"all"`
 	}
 )
 
@@ -45,7 +45,7 @@ Flags:
 
 ` + "`-m`" + `
 > A message that will be included in the commit generation prompt. This message may be used to alter, inform or fully override the default system prompt.
-    
+
 ---
 
 **All input provided after the above set of flags will be piped directly to the ` + "`git commit`" + ` CLI.**

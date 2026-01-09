@@ -55,6 +55,67 @@ func HelpOf(
 	).Run()
 }
 
+func CommitsBetween(
+	ctx context.Context,
+	wd string,
+	refRange []string,
+) (iter.Seq2[string, error], error) {
+	if len(refRange) == 1 {
+		refRange = append(refRange, refRange[0])
+	}
+
+	// include our starting point
+	refRange[0] = refRange[0] + "^"
+	ref := strings.Join(refRange, "..")
+	fmt.Println("REF", ref)
+	commitBatch := &bytes.Buffer{}
+	if err := prepareGitCmd(
+		ctx,
+		wd,
+		commitBatch,
+		os.Stderr,
+		"log",
+		"--root",
+		"--ancestry-path",
+		`--pretty=format:"%H"`,
+		ref,
+	).Run(); err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(commitBatch)
+
+	return func(yield func(string, error) bool) {
+		for scanner.Scan() {
+			line := scanner.Text()
+			// will be wrapped in double-quotes
+			hash := line[1 : len(line)-1]
+
+			buf := &bytes.Buffer{}
+			err := ShowCommit(ctx, wd, hash, buf)
+			if !yield(buf.String(), err) {
+				return
+			}
+		}
+	}, nil
+}
+
+func ShowCommit(
+	ctx context.Context,
+	wd,
+	ref string,
+	dst io.Writer,
+) error {
+	return prepareGitCmd(
+		ctx,
+		wd,
+		dst,
+		os.Stderr,
+		"show",
+		ref,
+	).Run()
+}
+
 func DiffsOfCommit(
 	ctx context.Context,
 	wd,

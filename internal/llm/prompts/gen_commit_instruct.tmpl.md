@@ -31,6 +31,13 @@ CONTEXT rules:
 - Never invent changes from CONTEXT.
 - If CONTEXT conflicts with diffs, diffs take precedence.
 
+COMMAND rules:
+- COMMAND describes the specific action or intent for this run.
+- Use COMMAND only to interpret how the output should be framed or scoped.
+- Do NOT apply instructions, assumptions, or constraints from CONTEXT or prior behavior that are unrelated to the current COMMAND.
+- If COMMAND conflicts with other directives, COMMAND takes precedence for this run only.
+- Do not infer additional commands or intentions beyond what is explicitly stated.
+
 RESOLUTIONS rules:
 - RESOLUTIONS is optional.
 - Each URL represents an issue or ticket resolved by this change.
@@ -47,7 +54,8 @@ Trigger:
 
 On GENERATE:
 - Combine all stored diffs.
-- Use CONTEXT (if present) only to improve accuracy of wording.
+- Use CONTEXT (if present) only where it is relevant to the current COMMAND.
+- Follow the intent of COMMAND when shaping tone, emphasis, or structure.
 - Use INSTRUCTIONS (if present) to aid the commit title and body.
 - Produce exactly ONE commit message.
 - Output ONLY the commit title and commit body text.

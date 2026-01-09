@@ -32,9 +32,13 @@ type (
 
 	ReasoningLevel string
 
-	instructionsTemplateData struct {
+	commitInstructionsTemplateData struct {
 		Language string
 		Format   string
+	}
+
+	explanationInstructionsTemplateData struct {
+		Language string
 	}
 
 	contextLoader interface {
@@ -66,6 +70,16 @@ var (
 		t, err := template.New("gen_commit_instruct.tmpl.md").Parse(genCommitInstSrc)
 		if err != nil {
 			log.Fatal().Err(err).Msg("failed to parse commit instruction template")
+		}
+
+		return t
+	}()
+	//go:embed prompts/explain_instruct.tmpl.md
+	explainInstSrc      string
+	explainInstructions = func() *template.Template {
+		t, err := template.New("explain_instruct.tmpl.md").Parse(explainInstSrc)
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to parse explanation instruction template")
 		}
 
 		return t
@@ -104,6 +118,116 @@ func New(
 	}, nil
 }
 
+func (recv *LLM) ExplainCommits(
+	ctx context.Context,
+	commits iter.Seq2[string, error],
+	dst io.Writer,
+) error {
+	startTime := time.Now()
+
+	instructionData := &explanationInstructionsTemplateData{
+		Language: defaultLang.String(),
+	}
+
+	if recv.config.outputLang != nil {
+		instructionData.Language = recv.config.outputLang.String()
+	}
+
+	instructions, err := execInstructionTmpl(
+		explainInstructions,
+		instructionData,
+	)
+	if err != nil {
+		return err
+	}
+
+	var tokensIn, tokensOut int64
+	var explainInput responses.ResponseInputParam
+
+	explainInput = append(explainInput, gitDoContextMsg("commit"))
+
+	if recv.config.contextLoader != nil {
+		rc, err := recv.config.contextLoader.LoadContextFile()
+		if err == nil {
+			defer rc.Close()
+
+			msg := bytes.NewBufferString("CONTEXT\n")
+			if _, err := io.Copy(msg, rc); err == nil {
+				explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
+					OfMessage: &responses.EasyInputMessageParam{
+						Role: responses.EasyInputMessageRoleUser,
+						Content: responses.EasyInputMessageContentUnionParam{
+							OfString: param.NewOpt(msg.String()),
+						},
+					},
+				})
+			}
+		}
+	}
+
+	for patch, err := range commits {
+		if err != nil {
+			return err
+		}
+
+		explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
+			OfMessage: &responses.EasyInputMessageParam{
+				Role: responses.EasyInputMessageRoleUser,
+				Content: responses.EasyInputMessageContentUnionParam{
+					OfString: param.NewOpt(patch),
+				},
+			},
+		})
+	}
+
+	explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleUser,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt("GENERATE"),
+			},
+		},
+	})
+
+	respParams := responses.ResponseNewParams{
+		Model:        recv.config.model,
+		Instructions: param.NewOpt(instructions),
+		Input: responses.ResponseNewParamsInputUnion{
+			OfInputItemList: explainInput,
+		},
+	}
+
+	if len(recv.config.reasoning) > 0 {
+		respParams.Reasoning = shared.ReasoningParam{
+			Effort: shared.ReasoningEffort(recv.config.reasoning),
+		}
+	}
+
+	stream := recv.client.Responses.NewStreaming(
+		ctx, respParams,
+	)
+	for stream.Next() {
+		cur := stream.Current()
+		if _, err := dst.Write([]byte(cur.Delta)); err != nil {
+			return err
+		}
+
+		tokensIn += cur.Response.Usage.InputTokens
+		tokensOut += cur.Response.Usage.OutputTokens
+	}
+	if err := stream.Err(); err != nil {
+		return err
+	}
+
+	log.Debug().
+		Int64("input_tokens", tokensIn).
+		Int64("output_tokens", tokensOut).
+		Stringer("latency", time.Since(startTime)).
+		Msg("llm response")
+
+	return nil
+}
+
 func (recv *LLM) GenerateCommit(
 	ctx context.Context,
 	commits iter.Seq2[string, error],
@@ -118,7 +242,7 @@ func (recv *LLM) GenerateCommit(
 
 	startTime := time.Now()
 
-	instructionData := &instructionsTemplateData{
+	instructionData := &commitInstructionsTemplateData{
 		Language: defaultLang.String(),
 		Format:   defaultCommitFormat,
 	}
@@ -137,6 +261,8 @@ func (recv *LLM) GenerateCommit(
 
 	var tokensIn, tokensOut, patchCount int64
 	var commitInput responses.ResponseInputParam
+
+	commitInput = append(commitInput, gitDoContextMsg("explain"))
 
 	if recv.config.contextLoader != nil {
 		rc, err := recv.config.contextLoader.LoadContextFile()
@@ -265,4 +391,18 @@ func execInstructionTmpl(t *template.Template, data any) (string, error) {
 	}
 
 	return dst.String(), nil
+}
+
+func gitDoContextMsg(subcommand string) responses.ResponseInputItemUnionParam {
+	return responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleUser,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt(fmt.Sprintf(
+					"COMMAND\nThis is being invoked by the `%s` command.", subcommand,
+				),
+				),
+			},
+		},
+	}
 }

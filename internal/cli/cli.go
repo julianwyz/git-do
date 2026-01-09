@@ -14,7 +14,8 @@ import (
 
 type (
 	CLI struct {
-		Commit Commit `cmd:"" help:"commit"`
+		Commit  Commit  `cmd:""`
+		Explain Explain `cmd:""`
 
 		runner   *kong.Context `kong:"-"`
 		config   *cliConfig
