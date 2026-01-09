@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/julianwyz/git-do/internal/git"
 	"github.com/julianwyz/git-do/internal/llm"
 	"github.com/rs/zerolog/log"
@@ -25,23 +26,29 @@ type (
 
 const (
 	messageGenTrailerName = "Message-generated-by"
-	commitHelp            = `Usage: git do commit [flags] [<rest> ...]
+	commitHelp            = `git do commit [flags] [rest...]
+=======
 
 Flags:
-  -h, --help 
-    Show this help message.
-  -r=RESOLVES,..., --resolves=RESOLVES,...
-    Issue or ticket identifiers that are resolved by the content of this commit.
-    This flag may be included more than once or as a comma-separated list.
-  --amend
-    Re-generate the most recent commit's message and amend that commit.
-  --[no-]trailer
-    Include, or omit, the 'Message-generated-by' commit trailer (it will be included by default).
-  -m
-    A message that will be included in the commit generation prompt.
-    This message may be used to alter, inform or fully override the default system prompt.
+
+` + "`-h`" + `, ` + "`--help`" + `
+> _Show this help message._ 
+
+` + "`-r=RESOLVES...`" + `, ` + "`--resolves=RESOLVES...`" + `
+> Issue or ticket identifiers that are resolved by the content of this commit. This flag may be included more than once or as a comma-separated list.
+
+` + "`--amend`" + `
+> Re-generate the most recent commit's message and amend that commit.
+
+` + "`--[no-]trailer`" + `
+> Include, or omit, the ` + "`Message-generated-by`" + ` commit trailer (it will be included by default).
+
+` + "`-m`" + `
+> A message that will be included in the commit generation prompt. This message may be used to alter, inform or fully override the default system prompt.
     
-All input provided after the above set of flags will be piped directly to the 'git commit' CLI.
+---
+
+**All input provided after the above set of flags will be piped directly to the ` + "`git commit`" + ` CLI.**
 `
 )
 
@@ -56,8 +63,6 @@ func (recv *Commit) Run(ctx *Ctx) error {
 	if err != nil {
 		return err
 	}
-
-	//msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
 
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
@@ -85,7 +90,19 @@ func (recv *Commit) Run(ctx *Ctx) error {
 }
 
 func (recv *Commit) Help(ctx context.Context, dst io.Writer) error {
-	_, err := dst.Write([]byte(commitHelp))
+	r, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+	)
+	if err != nil {
+		return err
+	}
+
+	s, err := r.Render(commitHelp)
+	if err != nil {
+		return err
+	}
+
+	_, err = dst.Write([]byte(s))
 	return err
 }
 
