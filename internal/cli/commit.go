@@ -15,7 +15,8 @@ import (
 
 type (
 	Commit struct {
-		Resolves []string
+		Resolves []string `short:"r"`
+		Message  string   `long:"m" short:"m"`
 		Amend    bool
 		Trailer  bool     `default:"true" negatable:""`
 		Args     []string `arg:"" help:"" optional:"" passthrough:"all"`
@@ -24,6 +25,24 @@ type (
 
 const (
 	messageGenTrailerName = "Message-generated-by"
+	commitHelp            = `Usage: git do commit [flags] [<rest> ...]
+
+Flags:
+  -h, --help 
+    Show this help message.
+  -r=RESOLVES,..., --resolves=RESOLVES,...
+    Issue or ticket identifiers that are resolved by the content of this commit.
+    This flag may be included more than once or as a comma-separated list.
+  --amend
+    Re-generate the most recent commit's message and amend that commit.
+  --[no-]trailer
+    Include, or omit, the 'Message-generated-by' commit trailer (it will be included by default).
+  -m
+    A message that will be included in the commit generation prompt.
+    This message may be used to alter, inform or fully override the default system prompt.
+    
+All input provided after the above set of flags will be piped directly to the 'git commit' CLI.
+`
 )
 
 func (recv *Commit) Run(ctx *Ctx) error {
@@ -38,21 +57,15 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		return err
 	}
 
-	msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
+	//msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
 
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
-		llm.CommitWithInstructions(msgVal),
+		llm.CommitWithInstructions(recv.Message),
 	)
 	if err != nil {
 		return err
-	}
-
-	if foundMsg {
-		for _, i := range msgIndices {
-			recv.Args = slices.Delete(recv.Args, i, i+1)
-		}
 	}
 
 	if recv.Trailer {
@@ -72,12 +85,8 @@ func (recv *Commit) Run(ctx *Ctx) error {
 }
 
 func (recv *Commit) Help(ctx context.Context, dst io.Writer) error {
-	return git.HelpOf(
-		ctx,
-		"",
-		"commit",
-		dst,
-	)
+	_, err := dst.Write([]byte(commitHelp))
+	return err
 }
 
 func (recv *Commit) amendCommit(ctx *Ctx) error {
@@ -85,8 +94,6 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 	if err != nil {
 		return err
 	}
-
-	msgVal, foundMsg, msgIndices := git.ExtractFlag(recv.Args, "-m")
 
 	seq, err := git.ListCommitChanges(
 		ctx, ctx.WorkingDir,
@@ -99,16 +106,10 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
-		llm.CommitWithInstructions(msgVal),
+		llm.CommitWithInstructions(recv.Message),
 	)
 	if err != nil {
 		return err
-	}
-
-	if foundMsg {
-		for _, i := range msgIndices {
-			recv.Args = slices.Delete(recv.Args, i, i+1)
-		}
 	}
 
 	args := slices.Concat(
