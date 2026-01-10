@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -65,9 +67,8 @@ func CommitsBetween(
 	}
 
 	// include our starting point
-	refRange[0] = refRange[0] + "^"
+	//refRange[0] = refRange[0] + "^"
 	ref := strings.Join(refRange, "..")
-	fmt.Println("REF", ref)
 	commitBatch := &bytes.Buffer{}
 	if err := prepareGitCmd(
 		ctx,
@@ -75,9 +76,7 @@ func CommitsBetween(
 		commitBatch,
 		os.Stderr,
 		"log",
-		"--root",
-		"--ancestry-path",
-		`--pretty=format:"%H"`,
+		"--pretty=format:%H",
 		ref,
 	).Run(); err != nil {
 		return nil, err
@@ -86,16 +85,30 @@ func CommitsBetween(
 	scanner := bufio.NewScanner(commitBatch)
 
 	return func(yield func(string, error) bool) {
-		for scanner.Scan() {
-			line := scanner.Text()
-			// will be wrapped in double-quotes
-			hash := line[1 : len(line)-1]
+		doHash := func(hash string) bool {
+			log.Debug().
+				Str("hash", hash).
+				Msg("include commit in summary")
 
 			buf := &bytes.Buffer{}
 			err := ShowCommit(ctx, wd, hash, buf)
-			if !yield(buf.String(), err) {
+			return yield(buf.String(), err)
+		}
+
+		for scanner.Scan() {
+			if !doHash(scanner.Text()) {
 				return
 			}
+		}
+		if err := scanner.Err(); err != nil {
+			yield("", err)
+			return
+		}
+
+		// do our base commit as it won't be included
+		// in the list
+		if !doHash(refRange[0]) {
+			return
 		}
 	}, nil
 }

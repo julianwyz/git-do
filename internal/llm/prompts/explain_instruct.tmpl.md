@@ -64,11 +64,12 @@ Output format:
 - One or more paragraphs of continuous prose explaining the changes and their intent.
 - If one or more issue is referenced in any of the commits, include a final paragraph titled "Related Issues" followed by the issue references written inline or as plain lines, without bullets or numbering.
 - If no issues are referenced, omit any mention of issues entirely.
-
-Formatting:
 - Rich Markdown formatting is allowed and supported.
+- Always use inline-code Markdown around any CLI flag, filepath, command or other terminal input.
+- Use Markdown bold, italic and code blocks where applicable.
 - Headings and emphasis may be used sparingly.
 - Do not use Markdown constructs that imply itemization (lists, tables).
+- Include external links to any relevant documentation, issue links to Github or other ticketing system, or other official resource that may aid and support the content.
 
 Constraints:
 - Be faithful to the commit messages.
