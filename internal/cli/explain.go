@@ -10,9 +10,36 @@ import (
 
 type (
 	Explain struct {
-		From string `arg:"" optional:""`
-		To   string `arg:"" optional:""`
+		From  string `arg:"" optional:""`
+		To    string `arg:"" optional:""`
+		Plain bool   `optional:""`
 	}
+)
+
+const (
+	explainHelp = `git do explain [ref] [to-ref]
+=======
+
+Flags:
+
+` + "`-h`" + `, ` + "`--help`" + `
+> Show this help message.
+
+` + "`--plain`" + `
+> Output the explanation without markdown rendering.
+
+Arguments:
+
+` + "`[ref]`" + `
+> The commit reference to explain. If omitted, ` + "`HEAD`" + ` is used.
+
+` + "`[to-ref]`" + `
+> The lower-bound commit reference to explain.
+>
+> All commits between ` + "`[ref]`" + `and ` + "`[to-ref]`" + ` will be included in the explanation.
+>
+> If omitted, only the ` + "`[ref]`" + ` is explained.
+`
 )
 
 func (recv *Explain) Run(ctx *Ctx) error {
@@ -35,24 +62,37 @@ func (recv *Explain) Run(ctx *Ctx) error {
 		return err
 	}
 
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithPreservedNewLines(),
-	)
-	if err != nil {
-		return err
+	var outputDst io.ReadWriteCloser = os.Stdout
+	if !recv.Plain {
+		renderer, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithPreservedNewLines(),
+		)
+		if err != nil {
+			return err
+		}
+
+		outputDst = renderer
 	}
 
 	if err := ctx.LLM.ExplainCommits(
 		ctx, commitIter,
-		renderer,
+		outputDst,
 	); err != nil {
 		return err
 	}
-	if err := renderer.Close(); err != nil {
-		return err
+
+	if !recv.Plain {
+		if err := outputDst.Close(); err != nil {
+			return err
+		}
+
+		_, err = io.Copy(os.Stdout, outputDst)
 	}
 
-	_, err = io.Copy(os.Stdout, renderer)
 	return err
+}
+
+func (recv Explain) Help(dst io.Writer) error {
+	return renderHelpMarkdown(dst, explainHelp)
 }

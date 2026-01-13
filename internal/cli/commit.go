@@ -2,13 +2,11 @@ package cli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/julianwyz/git-do/internal/git"
 	"github.com/julianwyz/git-do/internal/llm"
 	"github.com/rs/zerolog/log"
@@ -32,7 +30,7 @@ const (
 Flags:
 
 ` + "`-h`" + `, ` + "`--help`" + `
-> _Show this help message._ 
+> Show this help message.
 
 ` + "`-r=<id>...`" + `, ` + "`--resolves=<id>...`" + `
 > Issue or ticket identifiers that are resolved by the content of this commit. This flag may be included more than once or as a comma-separated list.
@@ -90,21 +88,8 @@ func (recv *Commit) Run(ctx *Ctx) error {
 	)
 }
 
-func (recv *Commit) Help(ctx context.Context, dst io.Writer) error {
-	r, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-	)
-	if err != nil {
-		return err
-	}
-
-	s, err := r.Render(commitHelp)
-	if err != nil {
-		return err
-	}
-
-	_, err = dst.Write([]byte(s))
-	return err
+func (recv Commit) Help(dst io.Writer) error {
+	return renderHelpMarkdown(dst, commitHelp)
 }
 
 func (recv *Commit) amendCommit(ctx *Ctx) error {
