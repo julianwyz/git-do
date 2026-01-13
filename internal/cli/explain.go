@@ -62,8 +62,11 @@ func (recv *Explain) Run(ctx *Ctx) error {
 		return err
 	}
 
-	var outputDst io.ReadWriteCloser = os.Stdout
-	if !recv.Plain {
+	var (
+		outputDst io.ReadWriteCloser = os.Stdout
+		finalize  func() error
+	)
+	if !recv.Plain && !ctx.PipedOutput {
 		renderer, err := glamour.NewTermRenderer(
 			glamour.WithAutoStyle(),
 			glamour.WithPreservedNewLines(),
@@ -73,6 +76,15 @@ func (recv *Explain) Run(ctx *Ctx) error {
 		}
 
 		outputDst = renderer
+
+		finalize = func() error {
+			if err := outputDst.Close(); err != nil {
+				return err
+			}
+
+			_, err = io.Copy(os.Stdout, outputDst)
+			return err
+		}
 	}
 
 	if err := ctx.LLM.ExplainCommits(
@@ -82,15 +94,11 @@ func (recv *Explain) Run(ctx *Ctx) error {
 		return err
 	}
 
-	if !recv.Plain {
-		if err := outputDst.Close(); err != nil {
-			return err
-		}
-
-		_, err = io.Copy(os.Stdout, outputDst)
+	if finalize != nil {
+		return finalize()
 	}
 
-	return err
+	return nil
 }
 
 func (recv Explain) Help(dst io.Writer) error {

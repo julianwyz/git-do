@@ -25,10 +25,11 @@ type (
 
 	Ctx struct {
 		context.Context
-		LLM        *llm.LLM
-		UserConfig *config.Config
-		HomeDir    string
-		WorkingDir string
+		LLM         *llm.LLM
+		UserConfig  *config.Config
+		HomeDir     string
+		WorkingDir  string
+		PipedOutput bool
 	}
 )
 
@@ -81,15 +82,21 @@ func (recv *CLI) Exec(ctx context.Context) error {
 	}
 
 	return recv.runner.Run(&Ctx{
-		Context:    ctx,
-		LLM:        llmDriver,
-		HomeDir:    recv.userHome,
-		WorkingDir: recv.cwd,
+		Context:     ctx,
+		LLM:         llmDriver,
+		HomeDir:     recv.userHome,
+		WorkingDir:  recv.cwd,
+		PipedOutput: recv.isOutputBeingPiped(),
 	})
 }
 
 func (recv *CLI) FatalIfErrorf(err error, args ...any) {
 	recv.runner.FatalIfErrorf(err, args...)
+}
+
+func (recv *CLI) isOutputBeingPiped() bool {
+	o, _ := os.Stdout.Stat()
+	return (o.Mode() & os.ModeCharDevice) != os.ModeCharDevice
 }
 
 func (recv *CLI) configureLLM(
