@@ -17,7 +17,7 @@ import (
 type (
 	Commit struct {
 		Resolves []string `short:"r"`
-		Message  string   `long:"m" short:"m"`
+		Message  []string `short:"m"`
 		Amend    bool
 		Trailer  bool     `default:"true" negatable:""`
 		Args     []string `arg:"" optional:"" passthrough:"all"`
@@ -34,7 +34,7 @@ Flags:
 ` + "`-h`" + `, ` + "`--help`" + `
 > _Show this help message._ 
 
-` + "`-r=RESOLVES...`" + `, ` + "`--resolves=RESOLVES...`" + `
+` + "`-r=<id>...`" + `, ` + "`--resolves=<id>...`" + `
 > Issue or ticket identifiers that are resolved by the content of this commit. This flag may be included more than once or as a comma-separated list.
 
 ` + "`--amend`" + `
@@ -43,8 +43,9 @@ Flags:
 ` + "`--[no-]trailer`" + `
 > Include, or omit, the ` + "`Message-generated-by`" + ` commit trailer (it will be included by default).
 
-` + "`-m`" + `
+` + "`-m=<msg>...`" + `, ` + "`--message=<msg>...`" + `
 > A message that will be included in the commit generation prompt. This message may be used to alter, inform or fully override the default system prompt.
+> If this flag is provided multiple times, their values are concatenated as separate paragraphs.
 
 ---
 
@@ -67,7 +68,7 @@ func (recv *Commit) Run(ctx *Ctx) error {
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
-		llm.CommitWithInstructions(recv.Message),
+		llm.CommitWithInstructions(strings.Join(recv.Message, "\n")),
 	)
 	if err != nil {
 		return err
@@ -123,7 +124,7 @@ func (recv *Commit) amendCommit(ctx *Ctx) error {
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
-		llm.CommitWithInstructions(recv.Message),
+		llm.CommitWithInstructions(strings.Join(recv.Message, "\n")),
 	)
 	if err != nil {
 		return err

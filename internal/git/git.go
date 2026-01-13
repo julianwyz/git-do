@@ -66,8 +66,6 @@ func CommitsBetween(
 		refRange = append(refRange, refRange[0])
 	}
 
-	// include our starting point
-	//refRange[0] = refRange[0] + "^"
 	ref := strings.Join(refRange, "..")
 	commitBatch := &bytes.Buffer{}
 	if err := prepareGitCmd(
