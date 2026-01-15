@@ -30,6 +30,7 @@ type (
 		HomeDir     string
 		WorkingDir  string
 		PipedOutput bool
+		PipedInput  bool
 	}
 )
 
@@ -87,6 +88,7 @@ func (recv *CLI) Exec(ctx context.Context) error {
 		HomeDir:     recv.userHome,
 		WorkingDir:  recv.cwd,
 		PipedOutput: recv.isOutputBeingPiped(),
+		PipedInput:  recv.isInputBeingPiped(),
 	})
 }
 
@@ -97,6 +99,11 @@ func (recv *CLI) FatalIfErrorf(err error, args ...any) {
 func (recv *CLI) isOutputBeingPiped() bool {
 	o, _ := os.Stdout.Stat()
 	return (o.Mode() & os.ModeCharDevice) != os.ModeCharDevice
+}
+
+func (recv *CLI) isInputBeingPiped() bool {
+	o, _ := os.Stdin.Stat()
+	return (o.Mode() & os.ModeCharDevice) == 0
 }
 
 func (recv *CLI) configureLLM(

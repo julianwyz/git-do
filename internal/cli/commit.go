@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 
@@ -63,10 +64,20 @@ func (recv *Commit) Run(ctx *Ctx) error {
 		return err
 	}
 
+	if ctx.PipedInput {
+		msg, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		recv.Message = slices.Insert(recv.Message, 0, string(msg))
+	}
+
+	instructionOverride := strings.Join(recv.Message, "\n")
 	commitMsg, err := ctx.LLM.GenerateCommit(
 		ctx, seq,
 		llm.CommitWithResolutions(recv.Resolves...),
-		llm.CommitWithInstructions(strings.Join(recv.Message, "\n")),
+		llm.CommitWithInstructions(instructionOverride),
 	)
 	if err != nil {
 		return err
