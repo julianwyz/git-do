@@ -44,7 +44,10 @@ Flags:
 
 ` + "`-m=<msg>...`" + `, ` + "`--message=<msg>...`" + `
 > A message that will be included in the commit generation prompt. This message may be used to alter, inform or fully override the default system prompt.
+>
 > If this flag is provided multiple times, their values are concatenated as separate paragraphs.
+>
+> Any piped content from ` + "`stdin`" + ` will be interpreted as a message.
 
 ---
 
