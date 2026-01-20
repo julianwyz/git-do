@@ -16,6 +16,7 @@ type (
 	CLI struct {
 		Commit  Commit  `cmd:""`
 		Explain Explain `cmd:""`
+		Status  Status  `cmd:""`
 
 		runner   *kong.Context `kong:"-"`
 		config   *cliConfig
