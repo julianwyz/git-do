@@ -46,6 +46,7 @@ Explanation rules (critical):
 - Generic or status-only phrases are forbidden.
 - If a file appears in `git status` but has no corresponding diff:
   - State that the file is new, removed, or pending changes without speculating about contents.
+- Preserve ALL other `git status` output and enhance the content, do not overwrite it.
 
 Ordering rules:
 - Preserve the exact order of status categories as they appear.
