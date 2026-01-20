@@ -26,6 +26,8 @@ func (recv *CLI) OutputHelp(to io.Writer) kong.HelpPrinter {
 			handler = recv.Commit
 		case "explain":
 			handler = recv.Explain
+		case "status":
+			handler = recv.Status
 		}
 
 		if handler != nil {

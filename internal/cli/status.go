@@ -9,16 +9,12 @@ import (
 
 type (
 	Status struct {
-		Resolves []string `short:"r"`
-		Message  []string `short:"m"`
-		Amend    bool
-		Trailer  bool     `default:"true" negatable:""`
-		Args     []string `arg:"" optional:"" passthrough:"all"`
+		Pathspec string `arg:"" optional:""`
 	}
 )
 
 const (
-	statusHelp = `git do status [flags] [rest...]
+	statusHelp = `git do status [pathspec]
 =======
 
 Flags:
@@ -26,15 +22,21 @@ Flags:
 ` + "`-h`" + `, ` + "`--help`" + `
 > Show this help message.
 
----
+Arguments:
 
-**All input provided after the above set of flags will be piped directly to the ` + "`git status`" + ` CLI.**
+` + "`[pathspec]`" + `
+> The pathspec to check the status of (defaults to ` + "`.`" + `)
 `
 )
 
 func (recv *Status) Run(ctx *Ctx) error {
+	pathspec := "."
+	if len(recv.Pathspec) > 0 {
+		pathspec = recv.Pathspec
+	}
+
 	seq, status, err := git.Status(
-		ctx, ctx.WorkingDir, ".",
+		ctx, ctx.WorkingDir, pathspec,
 	)
 	if err != nil {
 		return err
