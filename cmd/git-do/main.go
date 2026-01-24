@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -13,9 +14,15 @@ import (
 )
 
 func init() {
+	var dst io.Writer = io.Discard
+
+	if v, set := os.LookupEnv("GITDO_DEBUG"); set && v == "TRUE" {
+		dst = os.Stderr
+	}
+
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stderr,
+		Out:        dst,
 		TimeFormat: time.RFC3339,
 	})
 }
