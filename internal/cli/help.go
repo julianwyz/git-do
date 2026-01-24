@@ -3,42 +3,62 @@ package cli
 import (
 	"fmt"
 	"io"
+	"maps"
+	"os"
+	"slices"
+	"sort"
 
 	"github.com/alecthomas/kong"
 	"github.com/charmbracelet/glamour"
 )
 
 type (
+	Help struct{}
+
 	helper interface {
 		Help(dst io.Writer) error
 	}
 )
 
+var (
+	helpMap = map[string]helper{
+		"init":    Init{},
+		"status":  Status{},
+		"explain": Explain{},
+		"commit":  Commit{},
+	}
+)
+
+func (recv *Help) Run(ctx *Ctx) error {
+	return recv.Help(os.Stdout)
+}
+
+func (recv Help) Help(dst io.Writer) error {
+	keys := slices.Collect(maps.Keys(helpMap))
+	sort.Strings(keys)
+	for _, s := range keys {
+		if err := helpOf(dst, s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (recv *CLI) OutputHelp(to io.Writer) kong.HelpPrinter {
 	return func(options kong.HelpOptions, cli *kong.Context) error {
-		var (
-			handler any
-			cmd     = cli.Command()
-		)
+		return helpOf(to, cli.Command())
+	}
+}
 
-		switch cmd {
-		case "commit":
-			handler = recv.Commit
-		case "explain":
-			handler = recv.Explain
-		case "status":
-			handler = recv.Status
-		}
-
-		if handler != nil {
-			if h, ok := handler.(helper); ok {
-				return h.Help(to)
-			}
-		}
-
+func helpOf(to io.Writer, cmd string) error {
+	hlpr, f := helpMap[cmd]
+	if !f {
 		_, err := fmt.Fprintf(to, "No help documentation available for '%s' command.\n", cmd)
 		return err
 	}
+
+	return hlpr.Help(to)
 }
 
 func renderHelpMarkdown(dst io.Writer, content string) error {

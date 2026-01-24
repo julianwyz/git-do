@@ -15,6 +15,7 @@ import (
 
 type (
 	CLI struct {
+		Help    Help    `cmd:""`
 		Commit  Commit  `cmd:""`
 		Explain Explain `cmd:""`
 		Status  Status  `cmd:""`

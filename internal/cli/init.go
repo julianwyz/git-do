@@ -13,23 +13,22 @@ import (
 )
 
 type (
-	Init struct {
-	}
+	Init struct{}
 )
 
 const (
 	initHelp = `git do init
 =======
 
+This will create the user credentials file in your home directory, it it has not yet been created.
+
+It will also create a ` + "`git do`" + ` configuration file in your current working directory.
+If a ` + "`git`" + ` repo has not yet been created in the directory, ` + "`git init`" + ` will be called as well.
+
 Flags:
 
 ` + "`-h`" + `, ` + "`--help`" + `
 > Show this help message.
-
-Arguments:
-
-` + "`[pathspec]`" + `
-> The pathspec to check the status of (defaults to ` + "`.`" + `)
 `
 )
 
