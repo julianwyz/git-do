@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -24,12 +26,24 @@ func main() {
 	)
 	defer cancel()
 
-	cli, err := cli.New()
+	runner, err := cli.New()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize cli")
 	}
 
-	cli.FatalIfErrorf(
-		cli.Exec(ctx),
-	)
+	exitCode := 0
+	if err := runner.Exec(ctx); err != nil {
+		exitCode = 1
+
+		switch {
+		case errors.Is(err, cli.ErrNoCreds):
+			_, _ = os.Stdout.WriteString("No user credentials found. Have you ran `git do init` yet?\n")
+		case errors.Is(err, cli.ErrNoProjectConfig):
+			_, _ = os.Stderr.WriteString("No project configuration file found in current directory. Have you ran `git do init` yet?\n")
+		default:
+			fmt.Fprintf(os.Stderr, "Encountered unknown error: %s\n", err.Error())
+		}
+	}
+
+	os.Exit(exitCode)
 }

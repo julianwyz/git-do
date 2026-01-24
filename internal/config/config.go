@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/julianwyz/git-do/internal/git"
@@ -75,6 +77,40 @@ func LoadFrom(fs fs.FS) (*Config, error) {
 	}
 
 	return nil, ErrNoConfig
+}
+
+func Exists(f fs.FS) (bool, string) {
+	for _, variant := range configFileAliases {
+		if _, err := fs.Stat(f, variant); err == nil {
+			return true, variant
+		}
+	}
+
+	return false, ""
+}
+
+func WriteDefault(dir string) error {
+	def := &Config{
+		Version:  "1",
+		Language: "en-US",
+		LLM: &LLM{
+			APIBase: "https://api.openai.com/v1",
+			Model:   "gpt-5-mini",
+		},
+		Commit: &Commit{
+			Format: "github",
+		},
+	}
+	content, err := toml.Marshal(def)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(
+		filepath.Join(dir, "do.toml"),
+		content,
+		0644,
+	)
 }
 
 func (recv *Config) LoadContextFile() (io.ReadCloser, error) {

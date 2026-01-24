@@ -26,6 +26,16 @@ const (
 	CommitFormatConventional = CommitFormat("conventional")
 )
 
+func Init(ctx context.Context, wd string, out io.Writer) error {
+	return prepareGitCmd(
+		ctx,
+		wd,
+		out,
+		out,
+		"init",
+	).Run()
+}
+
 func Status(
 	ctx context.Context,
 	wd string,

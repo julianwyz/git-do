@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"os"
 
@@ -17,6 +18,7 @@ type (
 		Commit  Commit  `cmd:""`
 		Explain Explain `cmd:""`
 		Status  Status  `cmd:""`
+		Init    Init    `cmd:""`
 
 		runner   *kong.Context `kong:"-"`
 		config   *cliConfig
@@ -36,6 +38,11 @@ type (
 )
 
 const Version = "0.1.0"
+
+var (
+	ErrNoProjectConfig = errors.New("cli: no project config file found")
+	ErrNoCreds         = errors.New("cli: no user credentials found")
+)
 
 func New(opts ...CLIOpt) (*CLI, error) {
 	var (
@@ -71,16 +78,21 @@ func New(opts ...CLIOpt) (*CLI, error) {
 }
 
 func (recv *CLI) Exec(ctx context.Context) error {
-	projectConfig, apiCredentials, err := recv.loadConfig()
-	if err != nil {
-		return err
-	}
+	var llmDriver *llm.LLM
 
-	llmDriver, err := recv.configureLLM(
-		projectConfig, apiCredentials,
-	)
-	if err != nil {
-		return err
+	// init doesn't require these files be in place yet
+	if recv.runner.Command() != "init" {
+		projectConfig, apiCredentials, err := recv.loadConfig()
+		if err != nil {
+			return err
+		}
+
+		llmDriver, err = recv.configureLLM(
+			projectConfig, apiCredentials,
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	return recv.runner.Run(&Ctx{
@@ -91,10 +103,6 @@ func (recv *CLI) Exec(ctx context.Context) error {
 		PipedOutput: recv.isOutputBeingPiped(),
 		PipedInput:  recv.isInputBeingPiped(),
 	})
-}
-
-func (recv *CLI) FatalIfErrorf(err error, args ...any) {
-	recv.runner.FatalIfErrorf(err, args...)
 }
 
 func (recv *CLI) isOutputBeingPiped() bool {
@@ -166,7 +174,7 @@ func (recv *CLI) loadConfig() (
 		os.DirFS(recv.cwd),
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrNoProjectConfig, err)
 	}
 
 	if projectConfig.LLM != nil && len(projectConfig.LLM.APIBase) > 0 {
@@ -179,7 +187,7 @@ func (recv *CLI) loadConfig() (
 				apiUrl.Host,
 			)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, errors.Join(ErrNoCreds, err)
 			}
 		}
 	}

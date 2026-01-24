@@ -3,6 +3,7 @@ package credentials
 import (
 	"errors"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"gopkg.in/ini.v1"
@@ -44,6 +45,46 @@ func LoadFrom(fs fs.FS, domain string) (*Credentials, error) {
 	}
 
 	return returner, nil
+}
+
+func WriteDefault(dir, key string) (string, error) {
+	cfg := ini.Empty()
+	s, err := cfg.NewSection("default")
+	if err != nil {
+		return "", err
+	}
+	if _, err := s.NewKey(apiKeyFieldName, key); err != nil {
+		return "", err
+	}
+
+	_ = os.Mkdir(
+		filepath.Join(dir,
+			".gitdo",
+		),
+		os.ModeDir,
+	)
+	w, err := os.Create(
+		filepath.Join(dir,
+			".gitdo",
+			"credentials",
+		),
+	)
+	if err != nil {
+		return "", err
+	}
+	defer w.Close()
+
+	_, err = cfg.WriteTo(w)
+	return w.Name(), err
+}
+
+func Exists(f fs.FS) bool {
+	_, err := fs.Stat(
+		f,
+		filepath.Join(".gitdo", "credentials"),
+	)
+
+	return err == nil
 }
 
 func retrieveApiKey(cfg *ini.File, domain string, dst *Credentials) error {
