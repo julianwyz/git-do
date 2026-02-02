@@ -26,6 +26,7 @@ const (
 	CommitFormatConventional = CommitFormat("conventional")
 )
 
+// Init a git repo
 func Init(ctx context.Context, wd string, out io.Writer) error {
 	return prepareGitCmd(
 		ctx,
@@ -36,6 +37,7 @@ func Init(ctx context.Context, wd string, out io.Writer) error {
 	).Run()
 }
 
+// Status of the target pathspec within the git repo located at the provided wd
 func Status(
 	ctx context.Context,
 	wd string,
@@ -143,6 +145,7 @@ func Status(
 	}, statusOut.String(), nil
 }
 
+// HeadHash of the git repo at wd
 func HeadHash(ctx context.Context, wd string) (string, error) {
 	buf := &bytes.Buffer{}
 
@@ -160,22 +163,18 @@ func HeadHash(ctx context.Context, wd string) (string, error) {
 	return strings.TrimSpace(buf.String()), nil
 }
 
-func HelpOf(
-	ctx context.Context,
-	wd,
-	cmd string,
-	dst io.Writer,
-) error {
-	return prepareGitCmd(
-		ctx,
-		wd,
-		dst,
-		dst,
-		cmd,
-		"--help",
-	).Run()
-}
-
+// CommitsBetween the provided refRange
+//
+// This provides an iterator to step through the commits
+// in the range.
+//
+// refRange is expected to have...
+//
+//	[0] = start
+//	[1] = end
+//
+// If a single ref is provided, that will be the only commit
+// returned by the iterator.
 func CommitsBetween(
 	ctx context.Context,
 	wd string,
@@ -230,6 +229,9 @@ func CommitsBetween(
 	}, nil
 }
 
+// ShowCommit identified by ref at the git repo at wd
+//
+// stdout will be piped to the dst
 func ShowCommit(
 	ctx context.Context,
 	wd,
@@ -246,6 +248,8 @@ func ShowCommit(
 	).Run()
 }
 
+// DiffsOfCommit writes the git patch
+// of changes made to the target pathspec at the provided ref
 func DiffsOfCommit(
 	ctx context.Context,
 	wd,
@@ -253,21 +257,71 @@ func DiffsOfCommit(
 	target string,
 	dst io.Writer,
 ) error {
+	cmtArgs := []string{
+		fmt.Sprintf("%s^", ref),
+		ref,
+	}
+
+	rc, _ := RootCommit(ctx, wd)
+	if rc == ref {
+		dn, err := hashDevNull(ctx, wd)
+		if err != nil {
+			return err
+		}
+		// we are on the root commit, do not use the parent
+		cmtArgs = []string{
+			dn,
+			ref,
+		}
+	}
+
+	cmdArgs := slices.Concat(
+		[]string{
+			"diff",
+			"--unified=12",
+			"--raw",
+		},
+		cmtArgs,
+		[]string{
+			"--",
+			target,
+		},
+	)
+
 	return prepareGitCmd(
 		ctx,
 		wd,
 		dst,
 		os.Stderr,
-		"diff",
-		"--unified=12",
-		"--raw",
-		fmt.Sprintf("%s^", ref),
-		ref,
-		"--",
-		target,
+		cmdArgs...,
 	).Run()
 }
 
+// RootCommit hash of the git repo at wd
+func RootCommit(
+	ctx context.Context,
+	wd string,
+) (string, error) {
+	var dst bytes.Buffer
+	if err := prepareGitCmd(
+		ctx,
+		wd,
+		&dst,
+		os.Stderr,
+		"rev-list",
+		"--max-parents=0",
+		"HEAD",
+	).Run(); err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(
+		dst.String(),
+	), nil
+}
+
+// StagedDiffs writes the staged diffs of target
+// to the dst
 func StagedDiffs(
 	ctx context.Context,
 	wd,
@@ -287,6 +341,8 @@ func StagedDiffs(
 	).Run()
 }
 
+// ListCommitChanges provides an iterator to step through
+// the changes to each file committed at ref
 func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
 	if err := prepareGitCmd(
@@ -323,6 +379,8 @@ func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, e
 	}, nil
 }
 
+// ListStaged provides an iterator to step through each file
+// that currently has staged changes
 func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
 	if err := prepareGitCmd(
@@ -351,6 +409,7 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error
 	}, nil
 }
 
+// Commit the changes to the local git repo
 func Commit(
 	ctx context.Context,
 	wd string,
@@ -380,6 +439,26 @@ func Commit(
 	return cmd.Run()
 }
 
+func hashDevNull(ctx context.Context, wd string) (string, error) {
+	var dst bytes.Buffer
+	if err := prepareGitCmd(
+		ctx,
+		wd,
+		&dst,
+		os.Stderr,
+		"hash-object",
+		"-t",
+		"tree",
+		os.DevNull,
+	).Run(); err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(
+		dst.String(),
+	), nil
+}
+
 func prepareGitCmd(
 	ctx context.Context,
 	wd string,
@@ -396,6 +475,7 @@ func prepareGitCmd(
 	cmd.Dir = wd
 	log.Debug().
 		Stringer("cmd", cmd).
+		Str("wd", wd).
 		Msg("git")
 
 	return cmd
