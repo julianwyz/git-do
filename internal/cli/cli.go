@@ -108,11 +108,13 @@ func (recv *CLI) Exec(ctx context.Context) error {
 
 func (recv *CLI) isOutputBeingPiped() bool {
 	o, _ := os.Stdout.Stat()
+
 	return (o.Mode() & os.ModeCharDevice) != os.ModeCharDevice
 }
 
 func (recv *CLI) isInputBeingPiped() bool {
 	o, _ := os.Stdin.Stat()
+
 	return (o.Mode() & os.ModeCharDevice) == 0
 }
 

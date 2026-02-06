@@ -122,6 +122,7 @@ func New(
 		option.WithBaseURL(config.apiBase),
 		option.WithAPIKey(config.apiKey),
 	)
+
 	log.Debug().
 		Str("base", config.apiBase).
 		Msg("configured llm client")
@@ -156,27 +157,16 @@ func (recv *LLM) ExplainCommits(
 		return err
 	}
 
-	var tokensIn, tokensOut int64
-	var explainInput responses.ResponseInputParam
+	var (
+		tokensIn, tokensOut int64
+		explainInput        responses.ResponseInputParam
+	)
 
 	explainInput = append(explainInput, gitDoContextMsg("commit"))
 
 	if recv.config.contextLoader != nil {
-		rc, err := recv.config.contextLoader.LoadContextFile()
-		if err == nil {
-			defer rc.Close()
-
-			msg := bytes.NewBufferString("CONTEXT\n")
-			if _, err := io.Copy(msg, rc); err == nil {
-				explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
-					OfMessage: &responses.EasyInputMessageParam{
-						Role: responses.EasyInputMessageRoleUser,
-						Content: responses.EasyInputMessageContentUnionParam{
-							OfString: param.NewOpt(msg.String()),
-						},
-					},
-				})
-			}
+		if msg, err := recv.retrieveContextTurn(); err == nil {
+			explainInput = append(explainInput, *msg)
 		}
 	}
 
@@ -185,24 +175,10 @@ func (recv *LLM) ExplainCommits(
 			return err
 		}
 
-		explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
-			OfMessage: &responses.EasyInputMessageParam{
-				Role: responses.EasyInputMessageRoleUser,
-				Content: responses.EasyInputMessageContentUnionParam{
-					OfString: param.NewOpt(patch),
-				},
-			},
-		})
+		explainInput = append(explainInput, stringResponseItem(patch))
 	}
 
-	explainInput = append(explainInput, responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt("GENERATE"),
-			},
-		},
-	})
+	explainInput = append(explainInput, stringResponseItem("GENERATE"))
 
 	respParams := responses.ResponseNewParams{
 		Model:        recv.config.model,
@@ -230,6 +206,7 @@ func (recv *LLM) ExplainCommits(
 		tokensIn += cur.Response.Usage.InputTokens
 		tokensOut += cur.Response.Usage.OutputTokens
 	}
+
 	if err := stream.Err(); err != nil {
 		return err
 	}
@@ -265,6 +242,7 @@ func (recv *LLM) GenerateCommit(
 	if recv.config.outputLang != nil {
 		instructionData.Language = recv.config.outputLang.String()
 	}
+
 	if len(recv.config.commitFormat) > 0 {
 		instructionData.Format = string(recv.config.commitFormat)
 	}
@@ -277,44 +255,27 @@ func (recv *LLM) GenerateCommit(
 		return "", err
 	}
 
-	var tokensIn, tokensOut, patchCount int64
-	var commitInput responses.ResponseInputParam
+	var (
+		tokensIn, tokensOut, patchCount int64
+		commitInput                     responses.ResponseInputParam
+	)
 
 	commitInput = append(commitInput, gitDoContextMsg("explain"))
 
 	if recv.config.contextLoader != nil {
-		rc, err := recv.config.contextLoader.LoadContextFile()
-		if err == nil {
-			defer rc.Close()
-
-			msg := bytes.NewBufferString("CONTEXT\n")
-			if _, err := io.Copy(msg, rc); err == nil {
-				commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
-					OfMessage: &responses.EasyInputMessageParam{
-						Role: responses.EasyInputMessageRoleUser,
-						Content: responses.EasyInputMessageContentUnionParam{
-							OfString: param.NewOpt(msg.String()),
-						},
-					},
-				})
-			}
+		if msg, err := recv.retrieveContextTurn(); err == nil {
+			commitInput = append(commitInput, *msg)
 		}
 	}
 
 	for patch, err := range commits {
 		patchCount++
+
 		if err != nil {
 			return "", err
 		}
 
-		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
-			OfMessage: &responses.EasyInputMessageParam{
-				Role: responses.EasyInputMessageRoleUser,
-				Content: responses.EasyInputMessageContentUnionParam{
-					OfString: param.NewOpt(patch),
-				},
-			},
-		})
+		commitInput = append(commitInput, stringResponseItem(patch))
 	}
 
 	if patchCount == 0 {
@@ -324,38 +285,15 @@ func (recv *LLM) GenerateCommit(
 	if len(config.resolutions) > 0 {
 		msg := fmt.Sprintf("RESOLUTIONS\n%s",
 			strings.Join(config.resolutions, "\n"))
-
-		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
-			OfMessage: &responses.EasyInputMessageParam{
-				Role: responses.EasyInputMessageRoleUser,
-				Content: responses.EasyInputMessageContentUnionParam{
-					OfString: param.NewOpt(msg),
-				},
-			},
-		})
+		commitInput = append(commitInput, stringResponseItem(msg))
 	}
 
 	if len(config.instructions) > 0 {
 		msg := fmt.Sprintf("INSTRUCTIONS\n%s", config.instructions)
-
-		commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
-			OfMessage: &responses.EasyInputMessageParam{
-				Role: responses.EasyInputMessageRoleUser,
-				Content: responses.EasyInputMessageContentUnionParam{
-					OfString: param.NewOpt(msg),
-				},
-			},
-		})
+		commitInput = append(commitInput, stringResponseItem(msg))
 	}
 
-	commitInput = append(commitInput, responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt("GENERATE"),
-			},
-		},
-	})
+	commitInput = append(commitInput, stringResponseItem("GENERATE"))
 
 	respParams := responses.ResponseNewParams{
 		Model:        recv.config.model,
@@ -431,64 +369,32 @@ func (recv *LLM) ExplainStatus(
 		instructionData.Language = recv.config.outputLang.String()
 	}
 
-	var tokensIn, tokensOut int64
-	var input responses.ResponseInputParam
+	var (
+		tokensIn, tokensOut int64
+		input               responses.ResponseInputParam
+	)
 
 	input = append(input, gitDoContextMsg("status"))
 
 	if recv.config.contextLoader != nil {
-		rc, err := recv.config.contextLoader.LoadContextFile()
-		if err == nil {
-			defer rc.Close()
-
-			msg := bytes.NewBufferString("CONTEXT\n")
-			if _, err := io.Copy(msg, rc); err == nil {
-				input = append(input, responses.ResponseInputItemUnionParam{
-					OfMessage: &responses.EasyInputMessageParam{
-						Role: responses.EasyInputMessageRoleUser,
-						Content: responses.EasyInputMessageContentUnionParam{
-							OfString: param.NewOpt(msg.String()),
-						},
-					},
-				})
-			}
+		if msg, err := recv.retrieveContextTurn(); err == nil {
+			input = append(input, *msg)
 		}
 	}
 
-	input = append(input, responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(
-					fmt.Sprintf("STATUS\n%s", statusOutput),
-				),
-			},
-		},
-	})
+	input = append(input,
+		stringResponseItem(fmt.Sprintf("STATUS\n%s", statusOutput)),
+	)
 
 	for patch, err := range statusChanges {
 		if err != nil {
 			return err
 		}
 
-		input = append(input, responses.ResponseInputItemUnionParam{
-			OfMessage: &responses.EasyInputMessageParam{
-				Role: responses.EasyInputMessageRoleUser,
-				Content: responses.EasyInputMessageContentUnionParam{
-					OfString: param.NewOpt(patch),
-				},
-			},
-		})
+		input = append(input, stringResponseItem(patch))
 	}
 
-	input = append(input, responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt("GENERATE"),
-			},
-		},
-	})
+	input = append(input, stringResponseItem("GENERATE"))
 
 	respParams := responses.ResponseNewParams{
 		Model:        recv.config.model,
@@ -516,6 +422,7 @@ func (recv *LLM) ExplainStatus(
 		tokensIn += cur.Response.Usage.InputTokens
 		tokensOut += cur.Response.Usage.OutputTokens
 	}
+
 	if err := stream.Err(); err != nil {
 		return err
 	}
@@ -531,6 +438,31 @@ func (recv *LLM) ExplainStatus(
 		Msg("llm response")
 
 	return nil
+}
+
+func (recv *LLM) retrieveContextTurn() (*responses.ResponseInputItemUnionParam, error) {
+	rc, err := recv.config.contextLoader.LoadContextFile()
+	if err != nil {
+		return nil, err
+	}
+
+	defer rc.Close()
+
+	msg := bytes.NewBufferString("CONTEXT\n")
+
+	_, err = io.Copy(msg, rc)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleUser,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt(msg.String()),
+			},
+		},
+	}, nil
 }
 
 func execInstructionTmpl(t *template.Template, data any) (string, error) {
@@ -551,6 +483,17 @@ func gitDoContextMsg(subcommand string) responses.ResponseInputItemUnionParam {
 					"COMMAND\nThis is being invoked by the `%s` command.", subcommand,
 				),
 				),
+			},
+		},
+	}
+}
+
+func stringResponseItem(str string) responses.ResponseInputItemUnionParam {
+	return responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleUser,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt(str),
 			},
 		},
 	}

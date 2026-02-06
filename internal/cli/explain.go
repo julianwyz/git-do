@@ -83,6 +83,7 @@ func (recv *Explain) Run(ctx *Ctx) error {
 			}
 
 			_, err = io.Copy(os.Stdout, outputDst)
+
 			return err
 		}
 	}

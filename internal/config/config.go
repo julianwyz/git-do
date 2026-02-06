@@ -72,6 +72,7 @@ func LoadFrom(fs fs.FS) (*Config, error) {
 			}
 
 			dst.configFs = fs
+
 			return &dst, nil
 		}
 	}

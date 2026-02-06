@@ -46,6 +46,7 @@ func (recv *Status) Run(ctx *Ctx) error {
 		ctx, status, seq,
 		os.Stdout,
 	)
+
 	return err
 }
 

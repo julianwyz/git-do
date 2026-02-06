@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	var dst io.Writer = io.Discard
+	var dst = io.Discard
 
 	if v, set := os.LookupEnv("GITDO_DEBUG"); set && v == "TRUE" {
 		dst = os.Stderr

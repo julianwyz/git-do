@@ -26,7 +26,7 @@ const (
 	CommitFormatConventional = CommitFormat("conventional")
 )
 
-// Init a git repo
+// Init a git repo.
 func Init(ctx context.Context, wd string, out io.Writer) error {
 	return prepareGitCmd(
 		ctx,
@@ -37,7 +37,7 @@ func Init(ctx context.Context, wd string, out io.Writer) error {
 	).Run()
 }
 
-// Status of the target pathspec within the git repo located at the provided wd
+// Status of the target pathspec within the git repo located at the provided wd.
 func Status(
 	ctx context.Context,
 	wd string,
@@ -75,6 +75,7 @@ func Status(
 	})
 
 	wg.Wait()
+
 	if porcelainErr != nil || regErr != nil {
 		return nil, "", errors.Join(porcelainErr, regErr)
 	}
@@ -108,6 +109,7 @@ func Status(
 				// rename will be "before -> after"
 				{
 					s := strings.Split(fp, "->")
+
 					diffFlags = append(diffFlags, "--staged")
 					diffPaths = append(diffPaths, strings.TrimSpace(s[len(s)-1]))
 				}
@@ -134,18 +136,21 @@ func Status(
 				// we ignore this
 				err = nil
 			}
+
 			if !yield(buf.String(), err) {
 				return
 			}
 		}
+
 		if err := scanner.Err(); err != nil {
 			yield("", err)
+
 			return
 		}
 	}, statusOut.String(), nil
 }
 
-// HeadHash of the git repo at wd
+// HeadHash of the git repo at wd.
 func HeadHash(ctx context.Context, wd string) (string, error) {
 	buf := &bytes.Buffer{}
 
@@ -208,6 +213,7 @@ func CommitsBetween(
 
 			buf := &bytes.Buffer{}
 			err := ShowCommit(ctx, wd, hash, buf)
+
 			return yield(buf.String(), err)
 		}
 
@@ -216,8 +222,10 @@ func CommitsBetween(
 				return
 			}
 		}
+
 		if err := scanner.Err(); err != nil {
 			yield("", err)
+
 			return
 		}
 
@@ -231,7 +239,7 @@ func CommitsBetween(
 
 // ShowCommit identified by ref at the git repo at wd
 //
-// stdout will be piped to the dst
+// stdout will be piped to the dst.
 func ShowCommit(
 	ctx context.Context,
 	wd,
@@ -249,7 +257,7 @@ func ShowCommit(
 }
 
 // DiffsOfCommit writes the git patch
-// of changes made to the target pathspec at the provided ref
+// of changes made to the target pathspec at the provided ref.
 func DiffsOfCommit(
 	ctx context.Context,
 	wd,
@@ -297,7 +305,7 @@ func DiffsOfCommit(
 	).Run()
 }
 
-// RootCommit hash of the git repo at wd
+// RootCommit hash of the git repo at wd.
 func RootCommit(
 	ctx context.Context,
 	wd string,
@@ -321,7 +329,7 @@ func RootCommit(
 }
 
 // StagedDiffs writes the staged diffs of target
-// to the dst
+// to the dst.
 func StagedDiffs(
 	ctx context.Context,
 	wd,
@@ -337,12 +345,13 @@ func StagedDiffs(
 		"--unified=12",
 		"--cached",
 		"--raw",
+		"--",
 		target,
 	).Run()
 }
 
 // ListCommitChanges provides an iterator to step through
-// the changes to each file committed at ref
+// the changes to each file committed at ref.
 func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
 	if err := prepareGitCmd(
@@ -358,6 +367,7 @@ func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, e
 	).Run(); err != nil {
 		return nil, err
 	}
+
 	scanner := bufio.NewScanner(fileList)
 
 	return func(yield func(string, error) bool) {
@@ -380,7 +390,7 @@ func ListCommitChanges(ctx context.Context, wd, ref string) (iter.Seq2[string, e
 }
 
 // ListStaged provides an iterator to step through each file
-// that currently has staged changes
+// that currently has staged changes.
 func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error) {
 	fileList := &bytes.Buffer{}
 	if err := prepareGitCmd(
@@ -394,6 +404,7 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error
 	).Run(); err != nil {
 		return nil, err
 	}
+
 	scanner := bufio.NewScanner(fileList)
 
 	return func(yield func(string, error) bool) {
@@ -409,7 +420,7 @@ func ListStaged(ctx context.Context, wd string) (iter.Seq2[string, error], error
 	}, nil
 }
 
-// Commit the changes to the local git repo
+// Commit the changes to the local git repo.
 func Commit(
 	ctx context.Context,
 	wd string,

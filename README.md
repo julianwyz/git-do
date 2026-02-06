@@ -11,12 +11,12 @@
 
 ### Commands
 
-| Command | What does it do? |
-|---|---|
-| `git do commit` | Generate a commit message of your staged changes and automatically commit. |
-| `git do explain` | Explain the changes made in a commit, or range of commits. |
-| `git do init` | Initialize the `git do` tool and setup the project config file. |
-| `git do status` | Enhanced version of `git status` that includes a brief explanation of the changes. |
+| Command          | What does it do?                                                                   |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `git do commit`  | Generate a commit message of your staged changes and automatically commit.         |
+| `git do explain` | Explain the changes made in a commit, or range of commits.                         |
+| `git do init`    | Initialize the `git do` tool and setup the project config file.                    |
+| `git do status`  | Enhanced version of `git status` that includes a brief explanation of the changes. |
 
 You can see all, detailed, usage information by running `git do help`.
 
@@ -29,7 +29,6 @@ Compile the CLI using Go:
 ```sh
 go install github.com/julianwyz/git-do/cmd/git-do/main.go@latest
 ```
-
 
 Then move the binary to your system's `$PATH`. It will then be available at `git do ...`.
 
@@ -45,7 +44,7 @@ The available options are:
 
 ```toml
 # The config file version. "1" is the only accepted value.
-version = "1" 
+version = "1"
 
 # A BCP 47 language tag that will be provided to the LLM.
 # When used with multi-lingual models, all generated content will be in this language.
@@ -78,7 +77,7 @@ format = "github"
 
 ### Credentials file
 
-The `git do` credentials file is located at: `$HOME/.gitdo/credentials`. 
+The `git do` credentials file is located at: `$HOME/.gitdo/credentials`.
 
 This file is interpreted as an [INI file](https://en.wikipedia.org/wiki/INI_file). For example:
 
@@ -87,7 +86,7 @@ This file is interpreted as an [INI file](https://en.wikipedia.org/wiki/INI_file
 api_key = hello_world
 ```
 
-The `default` section will be used for all API calls to the LLM API unless there is a matching hostname defined in your credentials. 
+The `default` section will be used for all API calls to the LLM API unless there is a matching hostname defined in your credentials.
 
 When interacting with a `git do` project that is configured with an `api_base` of `https://api.openai.com/v1`, a section with the key `api.openai.com` will be used instead.
 
@@ -103,7 +102,7 @@ This allows you to easily use `git do` in multiple projects with multiple LLM pr
 
 ## Motivation
 
-> [Commit messages to me are almost as important as the code change itself.]((https://linux.slashdot.org/story/20/07/03/2133201/linus-torvalds-i-do-no-coding-any-more#:~:text=commit%20messages%20to%20me%20are%20almost%20as%20important%20as%20the%20code%20change%20itself.))
+> [Commit messages to me are almost as important as the code change itself.](<(https://linux.slashdot.org/story/20/07/03/2133201/linus-torvalds-i-do-no-coding-any-more#:~:text=commit%20messages%20to%20me%20are%20almost%20as%20important%20as%20the%20code%20change%20itself.)>)
 >
 > \- Linus Torvalds
 
@@ -113,7 +112,7 @@ We also all know that commit messages have a tendency to get... well... I think 
 
 ![xkcd-1296](./.github/assets/xkcd-1296.png)
 
-This is the core motivation behind `git-do`. It is designed to easily integrate into your workflow and help you craft more robust, accurate and informative commit messages. 
+This is the core motivation behind `git-do`. It is designed to easily integrate into your workflow and help you craft more robust, accurate and informative commit messages.
 
 ## Contributing
 

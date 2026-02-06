@@ -55,6 +55,7 @@ func helpOf(to io.Writer, cmd string) error {
 	hlpr, f := helpMap[cmd]
 	if !f {
 		_, err := fmt.Fprintf(to, "No help documentation available for '%s' command.\n", cmd)
+
 		return err
 	}
 
@@ -75,5 +76,6 @@ func renderHelpMarkdown(dst io.Writer, content string) error {
 	}
 
 	_, err = dst.Write([]byte(s))
+
 	return err
 }

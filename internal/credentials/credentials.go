@@ -75,6 +75,7 @@ func WriteDefault(dir, key string) (string, error) {
 	defer w.Close()
 
 	_, err = cfg.WriteTo(w)
+
 	return w.Name(), err
 }
 

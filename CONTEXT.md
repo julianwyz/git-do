@@ -29,7 +29,7 @@ In addition to this project being used by other git repositories, this project _
 
 # Version commits
 
-When CLI releases are prepared, there will be a change to the `Version` constant in the `internal/cli/cli.go` file. 
+When CLI releases are prepared, there will be a change to the `Version` constant in the `internal/cli/cli.go` file.
 
 When the `Version` constant is the ONLY diff in a `git do commit` action, the commit message MUST be the following format:
 
@@ -45,7 +45,7 @@ v0.0.0
 
 # Project technical specifications
 
-|  |  |
-|---|---|
-| Programming Language | Golang |
+|                         |                   |
+| ----------------------- | ----------------- |
+| Programming Language    | Golang            |
 | Development task runner | `task` / Taskfile |

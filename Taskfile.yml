@@ -6,3 +6,10 @@ tasks:
       - task --list-all
     silent: true
 
+  test:
+    cmds:
+      - go test -cover ./...
+
+  lint:
+    cmds:
+      - golangci-lint run ./...
