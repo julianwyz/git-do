@@ -1,0 +1,3 @@
+# this file will not be used because .do.toml is prioritized over it
+version = "1"
+language = "fr-FR"
