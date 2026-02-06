@@ -25,7 +25,7 @@ This file may be named one of the following:
 
 Regardless of name or extension, the configuration language support is TOML.
 
-In addition to this project being used by other git repositories, this project _itself_ contains a `do.toml` file that is used to use `git-do` in its own git repository.
+In addition to this project being used by other git repositories, this project _itself_ contains a `.do.toml` file that is used to use `git-do` in its own git repository.
 
 # Version commits
 

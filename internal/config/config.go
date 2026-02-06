@@ -48,10 +48,10 @@ var (
 	ErrInvalidVersion = errors.New("unknown version specified")
 
 	configFileAliases = [...]string{
+		".do.toml",
 		"do.toml",
 		"Dofile",
 		"Dofile.toml",
-		".do.toml",
 	}
 )
 
@@ -107,7 +107,7 @@ func WriteDefault(dir string) error {
 	}
 
 	return os.WriteFile(
-		filepath.Join(dir, "do.toml"),
+		filepath.Join(dir, ".do.toml"),
 		content,
 		0644,
 	)

@@ -39,7 +39,7 @@ Once you've installed the CLI, run `git do init` in your project's directory. Th
 
 ### Configuration
 
-After running `git do init`, a `do.toml` file will be created in your directory.
+After running `git do init`, a `.do.toml` file will be created in your directory.
 
 The available options are:
 
