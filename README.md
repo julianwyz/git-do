@@ -7,7 +7,7 @@
 
 ## What does (g)it _do_?
 
-`git-do` adds a `do` subcommand to your `git` CLI. It connects to any Large Language Model API that conforms to the [OpenAI API Spec](https://github.com/openai/openai-openapi) to automate common git workflows.
+`git-do` adds a `do` subcommand to your `git` CLI. It connects to any Large Language Model API that conforms to the [OpenAI API Spec](https://github.com/openai/openai-openapi) to automate and enhance common git workflows.
 
 ### Commands
 
@@ -116,3 +116,5 @@ We also all know that commit messages have a tendency to get... well... I think 
 This is the core motivation behind `git-do`. It is designed to easily integrate into your workflow and help you craft more robust, accurate and informative commit messages. 
 
 ## Contributing
+
+Thanks for considering contributing to this project! Feel free to open Github Issues and/or Pull Requests with any contribution you may have. More info is available in [CONTRIBUTING.md](./CONTRIBUTING.md).
