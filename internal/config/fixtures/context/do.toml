@@ -1,0 +1,4 @@
+version = "1"
+
+[llm.context]
+file = "CONTEXT.md"

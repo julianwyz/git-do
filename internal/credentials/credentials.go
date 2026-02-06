@@ -41,7 +41,7 @@ func LoadFrom(fs fs.FS, domain string) (*Credentials, error) {
 	if err := retrieveApiKey(
 		cfg, domain, returner,
 	); err != nil {
-
+		return nil, err
 	}
 
 	return returner, nil
@@ -61,7 +61,7 @@ func WriteDefault(dir, key string) (string, error) {
 		filepath.Join(dir,
 			".gitdo",
 		),
-		os.ModeDir,
+		0755,
 	)
 	w, err := os.Create(
 		filepath.Join(dir,

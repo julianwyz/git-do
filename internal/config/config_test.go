@@ -1,11 +1,14 @@
 package config_test
 
 import (
+	"bytes"
 	"embed"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/julianwyz/git-do/internal/config"
@@ -169,5 +172,36 @@ func TestWriteDefault(t *testing.T) {
 
 	if path != ".do.toml" {
 		t.Fatal("expected .do.toml file")
+	}
+}
+
+func TestLoadContextFile(t *testing.T) {
+	sub, err := fs.Sub(
+		fixtures,
+		filepath.Join("fixtures", "context"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conf, err := config.LoadFrom(sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rc, err := conf.LoadContextFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rc.Close()
+
+	var data bytes.Buffer
+	if _, err := io.Copy(&data, rc); err != nil {
+		t.Fatal(err)
+	}
+
+	str := data.String()
+	if !strings.Contains(str, "Hello World") {
+		t.Fatal("bad content")
 	}
 }
