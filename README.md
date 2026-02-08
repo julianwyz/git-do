@@ -27,7 +27,7 @@ You can see all, detailed, usage information by running `git do help`.
 Compile the CLI using Go:
 
 ```sh
-go install github.com/julianwyz/git-do/cmd/git-do/main.go@latest
+go install github.com/julianwyz/git-do/cmd/git-do@latest
 ```
 
 Then move the binary to your system's `$PATH`. It will then be available at `git do ...`.
