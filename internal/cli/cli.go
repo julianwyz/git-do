@@ -46,7 +46,7 @@ type (
 	}
 )
 
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 var (
 	ErrNoProjectConfig = errors.New("cli: no project config file found")
