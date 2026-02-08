@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -58,8 +59,9 @@ func New(opts ...CLIOpt) (*CLI, error) {
 		err      error
 		returner = &CLI{
 			config: &cliConfig{
-				input:  os.Stdin,
-				output: os.Stdout,
+				httpClient: http.DefaultClient,
+				input:      os.Stdin,
+				output:     os.Stdout,
 			},
 		}
 	)
@@ -130,6 +132,7 @@ func (recv *CLI) configureLLM(
 	opts := []llm.LLMOpt{
 		llm.WithCommitFormat(cfg.Commit.Format),
 		llm.WithContextLoader(cfg),
+		llm.WithHTTPClient(recv.config.httpClient),
 	}
 
 	if len(cfg.Language) > 0 {

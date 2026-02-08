@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"net/http"
 	"strings"
 	"text/template"
 	"time"
@@ -106,6 +107,7 @@ func New(
 ) (*LLM, error) {
 	config := &llmConfig{
 		model: defaultModel,
+		http:  http.DefaultClient,
 	}
 	for _, o := range opts {
 		if err := o(config); err != nil {
@@ -121,6 +123,7 @@ func New(
 	client := openai.NewClient(
 		option.WithBaseURL(config.apiBase),
 		option.WithAPIKey(config.apiKey),
+		option.WithHTTPClient(config.http),
 	)
 
 	log.Debug().

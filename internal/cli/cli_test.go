@@ -2,7 +2,10 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -20,6 +23,7 @@ type (
 		rbuf bytes.Buffer
 	}
 	testFileInfo struct{}
+	roundtrip    struct{}
 )
 
 func TestNew(t *testing.T) {
@@ -150,7 +154,6 @@ func TestCmd__Init__Existing(t *testing.T) {
 	}
 
 	txt := out.wbuf.String()
-	fmt.Println(txt)
 	if !strings.Contains(
 		txt,
 		"git repo already established.",
@@ -170,6 +173,35 @@ func TestCmd__Init__Existing(t *testing.T) {
 		"Credentials file already exists.",
 	) {
 		t.Fatal("expected credentials file to not be made")
+	}
+}
+
+func TestCmd__Commit(t *testing.T) {
+	dir := setup(t)
+	gitInit(t, dir)
+	addFile(t, dir)
+	out := &testDst{}
+
+	os.Args = []string{
+		"git-do",
+		"commit",
+	}
+	prog, err := cli.New(
+		cli.WithWorkingDir(dir),
+		cli.WithHomeDir(dir),
+		cli.WithInput(&testDst{}),
+		cli.WithOutput(out),
+		cli.WithHTTPClient(makeClient()),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prog == nil {
+		t.Fatal("cli should not be nil")
+	}
+
+	if err := prog.Exec(t.Context()); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -197,6 +229,27 @@ func setup(t *testing.T) string {
 func gitInit(t *testing.T, wd string) {
 	cmd := exec.Command(
 		"git", "init",
+	)
+	cmd.Dir = wd
+
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func addFile(t *testing.T, wd string) {
+	f, err := os.CreateTemp(wd, "file-*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	_, _ = f.WriteString(
+		fmt.Sprintf("%d", time.Now().UnixNano()),
+	)
+
+	cmd := exec.Command(
+		"git", "add", f.Name(),
 	)
 	cmd.Dir = wd
 
@@ -246,4 +299,33 @@ func (*testFileInfo) IsDir() bool {
 }
 func (*testFileInfo) Sys() any {
 	return nil
+}
+
+func makeClient() *http.Client {
+	return &http.Client{
+		Transport: &roundtrip{},
+	}
+}
+
+func (recv *roundtrip) RoundTrip(req *http.Request) (res *http.Response, err error) {
+	hdr := make(http.Header)
+	hdr.Set("content-type", "application/json")
+
+	res = &http.Response{
+		Header: hdr,
+		Body:   recv.makeBody(map[string]any{}),
+	}
+
+	return
+}
+
+func (recv *roundtrip) makeBody(obj any) io.ReadCloser {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil
+	}
+
+	return io.NopCloser(
+		bytes.NewBuffer(data),
+	)
 }

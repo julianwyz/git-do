@@ -2,6 +2,7 @@ package llm
 
 import (
 	"github.com/julianwyz/git-do/internal/git"
+	"github.com/openai/openai-go/v3/option"
 	"golang.org/x/text/language"
 )
 
@@ -14,6 +15,7 @@ type (
 		model         string
 		reasoning     ReasoningLevel
 		contextLoader contextLoader
+		http          option.HTTPClient
 	}
 
 	commitConfig struct {
@@ -36,6 +38,14 @@ func CommitWithInstructions(i string) CommitOpt {
 func CommitWithResolutions(rs ...string) CommitOpt {
 	return func(cc *commitConfig) error {
 		cc.resolutions = append(cc.resolutions, rs...)
+
+		return nil
+	}
+}
+
+func WithHTTPClient(c option.HTTPClient) LLMOpt {
+	return func(lc *llmConfig) error {
+		lc.http = c
 
 		return nil
 	}

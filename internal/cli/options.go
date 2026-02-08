@@ -1,11 +1,14 @@
 package cli
 
+import "github.com/openai/openai-go/v3/option"
+
 type (
 	cliConfig struct {
-		output destination
-		input  destination
-		wd     string
-		hd     string
+		output     destination
+		input      destination
+		wd         string
+		hd         string
+		httpClient option.HTTPClient
 	}
 
 	CLIOpt func(*cliConfig) error
@@ -38,6 +41,14 @@ func WithWorkingDir(d string) CLIOpt {
 func WithHomeDir(d string) CLIOpt {
 	return func(cc *cliConfig) error {
 		cc.hd = d
+
+		return nil
+	}
+}
+
+func WithHTTPClient(c option.HTTPClient) CLIOpt {
+	return func(cc *cliConfig) error {
+		cc.httpClient = c
 
 		return nil
 	}
