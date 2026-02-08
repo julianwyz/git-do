@@ -10,6 +10,7 @@ require (
 	github.com/jpillora/go-tld v1.2.1
 	github.com/openai/openai-go/v3 v3.15.0
 	github.com/rs/zerolog v1.34.0
+	golang.org/x/term v0.31.0
 	golang.org/x/text v0.32.0
 	gopkg.in/ini.v1 v1.67.0
 )
@@ -56,5 +57,4 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/term v0.31.0 // indirect
 )
