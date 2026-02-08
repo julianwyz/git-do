@@ -33,7 +33,20 @@ func main() {
 	)
 	defer cancel()
 
-	runner, err := cli.New()
+	hd, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to resolve home directory")
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to resolve working directory")
+	}
+
+	runner, err := cli.New(
+		cli.WithWorkingDir(wd),
+		cli.WithHomeDir(hd),
+	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to initialize cli")
 	}

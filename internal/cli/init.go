@@ -10,6 +10,7 @@ import (
 	"github.com/julianwyz/git-do/internal/config"
 	"github.com/julianwyz/git-do/internal/credentials"
 	"github.com/julianwyz/git-do/internal/git"
+	"golang.org/x/term"
 )
 
 type (
@@ -34,12 +35,12 @@ Flags:
 
 func (recv *Init) Run(ctx *Ctx) error {
 	if !recv.hasGit(ctx.WorkingDir) {
-		if err := git.Init(ctx, ctx.WorkingDir, os.Stdout); err != nil {
+		if err := git.Init(ctx, ctx.WorkingDir, ctx.Output); err != nil {
 			return err
 		}
-		_, _ = os.Stdout.WriteString("Established git repo.\n")
+		_, _ = ctx.Output.WriteString("Established git repo.\n")
 	} else {
-		_, _ = os.Stdout.WriteString("git repo already established.\n")
+		_, _ = ctx.Output.WriteString("git repo already established.\n")
 	}
 
 	if e, f := config.Exists(
@@ -48,24 +49,28 @@ func (recv *Init) Run(ctx *Ctx) error {
 		if err := config.WriteDefault(ctx.WorkingDir); err != nil {
 			return err
 		}
-		_, _ = os.Stdout.WriteString("Created initial project configuration.\n")
+		_, _ = ctx.Output.WriteString("Created initial project configuration.\n")
 	} else {
-		_, _ = fmt.Fprintf(os.Stdout, "%s configuration file already exists.\n", f)
+		_, _ = fmt.Fprintf(ctx.Output, "%s configuration file already exists.\n", f)
 	}
 
 	if e := credentials.Exists(
 		os.DirFS(ctx.HomeDir),
 	); !e {
-		_, _ = os.Stdout.WriteString("No credentials file found. Let's make a new one!.\n")
+		_, _ = ctx.Output.WriteString("No credentials file found. Let's make a new one!.\n")
 
 		var key string
-		if err :=
-			huh.NewInput().
-				Title("What should we use for the default LLM API Key?").
-				Description("If you don't need an API Key, you can just leave it blank.").
-				Value(&key).
-				Run(); err != nil {
-			return err
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			if err :=
+				huh.NewInput().
+					Title("What should we use for the default LLM API Key?").
+					Description("If you don't need an API Key, you can just leave it blank.").
+					Value(&key).
+					Run(); err != nil {
+				return err
+			}
+		} else {
+			_, _ = ctx.Output.WriteString("Device is non-interactive. Using empty key in credentials. You will have to update this manually.\n")
 		}
 
 		credFile, err := credentials.WriteDefault(
@@ -76,12 +81,12 @@ func (recv *Init) Run(ctx *Ctx) error {
 			return err
 		}
 
-		_, _ = fmt.Fprintf(os.Stdout, "Wrote credentials file to: %s\n", credFile)
+		_, _ = fmt.Fprintf(ctx.Output, "Wrote credentials file to: %s\n", credFile)
 	} else {
-		_, _ = os.Stdout.WriteString("Credentials file already exists.\n")
+		_, _ = ctx.Output.WriteString("Credentials file already exists.\n")
 	}
 
-	_, _ = os.Stdout.WriteString("\n🎉 Initial setup complete. Happy coding!\n")
+	_, _ = ctx.Output.WriteString("\n🎉 Initial setup complete. Happy coding!\n")
 
 	return nil
 }

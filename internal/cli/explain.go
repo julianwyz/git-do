@@ -2,7 +2,6 @@ package cli
 
 import (
 	"io"
-	"os"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/julianwyz/git-do/internal/git"
@@ -63,7 +62,7 @@ func (recv *Explain) Run(ctx *Ctx) error {
 	}
 
 	var (
-		outputDst io.ReadWriteCloser = os.Stdout
+		outputDst io.ReadWriteCloser = ctx.Output
 		finalize  func() error
 	)
 	if !recv.Plain && !ctx.PipedOutput {
@@ -82,7 +81,7 @@ func (recv *Explain) Run(ctx *Ctx) error {
 				return err
 			}
 
-			_, err = io.Copy(os.Stdout, outputDst)
+			_, err = io.Copy(ctx.Output, outputDst)
 
 			return err
 		}

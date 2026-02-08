@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"slices"
 	"sort"
 
@@ -30,7 +29,7 @@ var (
 )
 
 func (recv *Help) Run(ctx *Ctx) error {
-	return recv.Help(os.Stdout)
+	return recv.Help(ctx.Output)
 }
 
 func (recv Help) Help(dst io.Writer) error {

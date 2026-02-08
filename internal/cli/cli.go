@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"io"
 	"net/url"
 	"os"
 
@@ -21,20 +22,27 @@ type (
 		Status  Status  `cmd:""`
 		Init    Init    `cmd:""`
 
-		runner   *kong.Context `kong:"-"`
-		config   *cliConfig
-		userHome string
-		cwd      string
+		runner *kong.Context `kong:"-"`
+		config *cliConfig
 	}
 
 	Ctx struct {
 		context.Context
 		LLM         *llm.LLM
 		UserConfig  *config.Config
+		Output      destination
+		Input       destination
 		HomeDir     string
 		WorkingDir  string
 		PipedOutput bool
 		PipedInput  bool
+	}
+
+	destination interface {
+		io.WriteCloser
+		io.ReadCloser
+		Stat() (os.FileInfo, error)
+		WriteString(s string) (n int, err error)
 	}
 )
 
@@ -49,7 +57,10 @@ func New(opts ...CLIOpt) (*CLI, error) {
 	var (
 		err      error
 		returner = &CLI{
-			config: &cliConfig{},
+			config: &cliConfig{
+				input:  os.Stdin,
+				output: os.Stdout,
+			},
 		}
 	)
 
@@ -59,20 +70,12 @@ func New(opts ...CLIOpt) (*CLI, error) {
 		}
 	}
 
-	returner.userHome, err = os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-
-	returner.cwd, err = os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
 	returner.runner = kong.Parse(
 		returner,
 		kong.Name("git do"),
-		kong.Help(returner.OutputHelp(os.Stdout)),
+		kong.Help(returner.OutputHelp(
+			returner.config.output,
+		)),
 	)
 
 	return returner, nil
@@ -99,21 +102,23 @@ func (recv *CLI) Exec(ctx context.Context) error {
 	return recv.runner.Run(&Ctx{
 		Context:     ctx,
 		LLM:         llmDriver,
-		HomeDir:     recv.userHome,
-		WorkingDir:  recv.cwd,
+		HomeDir:     recv.config.hd,
+		WorkingDir:  recv.config.wd,
+		Input:       recv.config.input,
+		Output:      recv.config.output,
 		PipedOutput: recv.isOutputBeingPiped(),
 		PipedInput:  recv.isInputBeingPiped(),
 	})
 }
 
 func (recv *CLI) isOutputBeingPiped() bool {
-	o, _ := os.Stdout.Stat()
+	o, _ := recv.config.output.Stat()
 
 	return (o.Mode() & os.ModeCharDevice) != os.ModeCharDevice
 }
 
 func (recv *CLI) isInputBeingPiped() bool {
-	o, _ := os.Stdin.Stat()
+	o, _ := recv.config.input.Stat()
 
 	return (o.Mode() & os.ModeCharDevice) == 0
 }
@@ -174,7 +179,7 @@ func (recv *CLI) loadConfig() (
 		creds         *credentials.Credentials
 	)
 	projectConfig, err = config.LoadFrom(
-		os.DirFS(recv.cwd),
+		os.DirFS(recv.config.wd),
 	)
 	if err != nil {
 		return nil, nil, errors.Join(ErrNoProjectConfig, err)
@@ -186,7 +191,7 @@ func (recv *CLI) loadConfig() (
 		// but for our purposes, we only care about valid urls
 		if err == nil {
 			creds, err = credentials.LoadFrom(
-				os.DirFS(recv.userHome),
+				os.DirFS(recv.config.hd),
 				apiUrl.Host,
 			)
 			if err != nil {

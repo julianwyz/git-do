@@ -2,7 +2,6 @@ package cli
 
 import (
 	"io"
-	"os"
 
 	"github.com/julianwyz/git-do/internal/git"
 )
@@ -44,7 +43,7 @@ func (recv *Status) Run(ctx *Ctx) error {
 
 	err = ctx.LLM.ExplainStatus(
 		ctx, status, seq,
-		os.Stdout,
+		ctx.Output,
 	)
 
 	return err
