@@ -86,8 +86,7 @@ func New(opts ...CLIOpt) (*CLI, error) {
 func (recv *CLI) Exec(ctx context.Context) error {
 	var llmDriver *llm.LLM
 
-	// init doesn't require these files be in place yet
-	if recv.runner.Command() != "init" {
+	if recv.configsRequired(recv.runner.Command()) {
 		projectConfig, apiCredentials, err := recv.loadConfig()
 		if err != nil {
 			return err
@@ -204,4 +203,13 @@ func (recv *CLI) loadConfig() (
 	}
 
 	return projectConfig, creds, nil
+}
+
+func (recv *CLI) configsRequired(cmd string) bool {
+	switch cmd {
+	case "init", "help":
+		return false
+	}
+
+	return true
 }
