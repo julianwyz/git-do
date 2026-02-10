@@ -244,8 +244,9 @@ func addFile(t *testing.T, wd string) {
 	}
 	defer f.Close()
 
-	_, _ = f.WriteString(
-		fmt.Sprintf("%d", time.Now().UnixNano()),
+	_, _ = fmt.Fprintf(
+		f,
+		"%d", time.Now().UnixNano(),
 	)
 
 	cmd := exec.Command(
