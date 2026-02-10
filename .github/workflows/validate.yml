@@ -21,4 +21,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.6
+      - run: |
+          git config --global user.email "test@example.com"
+          git config --global user.name "Test Committer"
       - run: go test -cover ./...
