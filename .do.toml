@@ -7,7 +7,7 @@ api_base = "https://api.openai.com/v1"
 model = "gpt-5-mini"
 
 [llm.context]
-file = "CONTEXT.md"
+file = "AGENTS.md"
 
 [llm.reasoning]
 level = "low"
