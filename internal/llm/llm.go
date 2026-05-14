@@ -15,20 +15,15 @@ import (
 	_ "embed"
 
 	tld "github.com/jpillora/go-tld"
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
-	"github.com/openai/openai-go/v3/packages/param"
-	"github.com/openai/openai-go/v3/responses"
-	"github.com/openai/openai-go/v3/shared"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/text/language"
 )
 
 type (
 	LLM struct {
-		client *openai.Client
-		config *llmConfig
-		apiUrl *tld.URL
+		backend provider
+		config  *llmConfig
+		apiUrl  *tld.URL
 	}
 
 	ReasoningLevel string
@@ -120,20 +115,31 @@ func New(
 		return nil, err
 	}
 
-	client := openai.NewClient(
-		option.WithBaseURL(config.apiBase),
-		option.WithAPIKey(config.apiKey),
-		option.WithHTTPClient(config.http),
-	)
+	var backend provider
+	if strings.Contains(config.apiBase, "api.anthropic.com") {
+		backend, err = newAnthropicProvider(config)
+
+		log.Debug().
+			Msg("using anthropic backend provider")
+	} else {
+		backend, err = newOpenAIProvider(config)
+
+		log.Debug().
+			Str("base", config.apiBase).
+			Msg("using openai-compatible backend provider")
+	}
+	if err != nil {
+		return nil, err
+	}
 
 	log.Debug().
 		Str("base", config.apiBase).
 		Msg("configured llm client")
 
 	return &LLM{
-		apiUrl: parsedAPIUrl,
-		config: config,
-		client: &client,
+		apiUrl:  parsedAPIUrl,
+		config:  config,
+		backend: backend,
 	}, nil
 }
 
@@ -144,73 +150,29 @@ func (recv *LLM) ExplainCommits(
 ) error {
 	startTime := time.Now()
 
-	instructionData := &explanationInstructionsTemplateData{
-		Language: defaultLang.String(),
-	}
-
-	if recv.config.outputLang != nil {
-		instructionData.Language = recv.config.outputLang.String()
-	}
-
 	instructions, err := execInstructionTmpl(
 		explainInstructions,
-		instructionData,
+		&explanationInstructionsTemplateData{Language: recv.langString()},
 	)
 	if err != nil {
 		return err
 	}
 
-	var (
-		tokensIn, tokensOut int64
-		explainInput        responses.ResponseInputParam
-	)
-
-	explainInput = append(explainInput, gitDoContextMsg("commit"))
-
-	if recv.config.contextLoader != nil {
-		if msg, err := recv.retrieveContextTurn(); err == nil {
-			explainInput = append(explainInput, *msg)
+	var msgs []llmMessage
+	msgs = append(msgs, llmMessage{text: fmt.Sprintf("COMMAND\nThis is being invoked by the `%s` command.", "commit")})
+	if ctxText := recv.retrieveContextText(); ctxText != "" {
+		msgs = append(msgs, llmMessage{text: ctxText})
+	}
+	for patch, patchErr := range commits {
+		if patchErr != nil {
+			return patchErr
 		}
+		msgs = append(msgs, llmMessage{text: patch})
 	}
+	msgs = append(msgs, llmMessage{text: "GENERATE"})
 
-	for patch, err := range commits {
-		if err != nil {
-			return err
-		}
-
-		explainInput = append(explainInput, stringResponseItem(patch))
-	}
-
-	explainInput = append(explainInput, stringResponseItem("GENERATE"))
-
-	respParams := responses.ResponseNewParams{
-		Model:        recv.config.model,
-		Instructions: param.NewOpt(instructions),
-		Input: responses.ResponseNewParamsInputUnion{
-			OfInputItemList: explainInput,
-		},
-	}
-
-	if len(recv.config.reasoning) > 0 {
-		respParams.Reasoning = shared.ReasoningParam{
-			Effort: shared.ReasoningEffort(recv.config.reasoning),
-		}
-	}
-
-	stream := recv.client.Responses.NewStreaming(
-		ctx, respParams,
-	)
-	for stream.Next() {
-		cur := stream.Current()
-		if _, err := dst.Write([]byte(cur.Delta)); err != nil {
-			return err
-		}
-
-		tokensIn += cur.Response.Usage.InputTokens
-		tokensOut += cur.Response.Usage.OutputTokens
-	}
-
-	if err := stream.Err(); err != nil {
+	tokensIn, tokensOut, err := recv.backend.streamOutput(ctx, instructions, msgs, dst)
+	if err != nil {
 		return err
 	}
 
@@ -238,47 +200,34 @@ func (recv *LLM) GenerateCommit(
 	startTime := time.Now()
 
 	instructionData := &commitInstructionsTemplateData{
-		Language: defaultLang.String(),
+		Language: recv.langString(),
 		Format:   defaultCommitFormat,
 	}
-
-	if recv.config.outputLang != nil {
-		instructionData.Language = recv.config.outputLang.String()
-	}
-
 	if len(recv.config.commitFormat) > 0 {
 		instructionData.Format = string(recv.config.commitFormat)
 	}
 
-	instructions, err := execInstructionTmpl(
-		genCommitInstructions,
-		instructionData,
-	)
+	instructions, err := execInstructionTmpl(genCommitInstructions, instructionData)
 	if err != nil {
 		return "", err
 	}
 
 	var (
-		tokensIn, tokensOut, patchCount int64
-		commitInput                     responses.ResponseInputParam
+		msgs       []llmMessage
+		patchCount int64
 	)
 
-	commitInput = append(commitInput, gitDoContextMsg("explain"))
-
-	if recv.config.contextLoader != nil {
-		if msg, err := recv.retrieveContextTurn(); err == nil {
-			commitInput = append(commitInput, *msg)
-		}
+	msgs = append(msgs, llmMessage{text: fmt.Sprintf("COMMAND\nThis is being invoked by the `%s` command.", "explain")})
+	if ctxText := recv.retrieveContextText(); ctxText != "" {
+		msgs = append(msgs, llmMessage{text: ctxText})
 	}
 
-	for patch, err := range commits {
+	for patch, patchErr := range commits {
 		patchCount++
-
-		if err != nil {
-			return "", err
+		if patchErr != nil {
+			return "", patchErr
 		}
-
-		commitInput = append(commitInput, stringResponseItem(patch))
+		msgs = append(msgs, llmMessage{text: patch})
 	}
 
 	if patchCount == 0 {
@@ -286,46 +235,21 @@ func (recv *LLM) GenerateCommit(
 	}
 
 	if len(config.resolutions) > 0 {
-		msg := fmt.Sprintf("RESOLUTIONS\n%s",
-			strings.Join(config.resolutions, "\n"))
-		commitInput = append(commitInput, stringResponseItem(msg))
+		msgs = append(msgs, llmMessage{text: fmt.Sprintf("RESOLUTIONS\n%s",
+			strings.Join(config.resolutions, "\n"))})
 	}
-
 	if len(config.instructions) > 0 {
-		msg := fmt.Sprintf("INSTRUCTIONS\n%s", config.instructions)
-		commitInput = append(commitInput, stringResponseItem(msg))
+		msgs = append(msgs, llmMessage{text: fmt.Sprintf("INSTRUCTIONS\n%s", config.instructions)})
 	}
+	msgs = append(msgs, llmMessage{text: "GENERATE"})
 
-	commitInput = append(commitInput, stringResponseItem("GENERATE"))
-
-	respParams := responses.ResponseNewParams{
-		Model:        recv.config.model,
-		Instructions: param.NewOpt(instructions),
-		Input: responses.ResponseNewParamsInputUnion{
-			OfInputItemList: commitInput,
-		},
-	}
-
-	if len(recv.config.reasoning) > 0 {
-		respParams.Reasoning = shared.ReasoningParam{
-			Effort: shared.ReasoningEffort(recv.config.reasoning),
-		}
-	}
-
-	resp, err := recv.client.Responses.New(
-		ctx, respParams,
-	)
+	output, err := recv.backend.generateCommit(ctx, instructions, msgs)
 	if err != nil {
 		return "", err
 	}
 
-	tokensIn += resp.Usage.InputTokens
-	tokensOut += resp.Usage.OutputTokens
-	output := resp.OutputText()
-
 	log.Debug().
-		Int64("input_tokens", tokensIn).
-		Int64("output_tokens", tokensOut).
+		Int64("patch_count", patchCount).
 		Stringer("latency", time.Since(startTime)).
 		Msg("llm response")
 
@@ -351,82 +275,34 @@ func (recv *LLM) ExplainStatus(
 ) error {
 	startTime := time.Now()
 
-	instructionData := &statusInstructionsTemplateData{
-		Color:    true,
-		Language: defaultLang.String(),
-	}
-
-	if recv.config.outputLang != nil {
-		instructionData.Language = recv.config.outputLang.String()
-	}
-
 	instructions, err := execInstructionTmpl(
 		statusInstructions,
-		instructionData,
+		&statusInstructionsTemplateData{
+			Color:    true,
+			Language: recv.langString(),
+		},
 	)
 	if err != nil {
 		return err
 	}
 
-	if recv.config.outputLang != nil {
-		instructionData.Language = recv.config.outputLang.String()
+	var msgs []llmMessage
+	msgs = append(msgs, llmMessage{text: fmt.Sprintf("COMMAND\nThis is being invoked by the `%s` command.", "status")})
+	if ctxText := recv.retrieveContextText(); ctxText != "" {
+		msgs = append(msgs, llmMessage{text: ctxText})
 	}
+	msgs = append(msgs, llmMessage{text: fmt.Sprintf("STATUS\n%s", statusOutput)})
 
-	var (
-		tokensIn, tokensOut int64
-		input               responses.ResponseInputParam
-	)
-
-	input = append(input, gitDoContextMsg("status"))
-
-	if recv.config.contextLoader != nil {
-		if msg, err := recv.retrieveContextTurn(); err == nil {
-			input = append(input, *msg)
+	for patch, patchErr := range statusChanges {
+		if patchErr != nil {
+			return patchErr
 		}
+		msgs = append(msgs, llmMessage{text: patch})
 	}
+	msgs = append(msgs, llmMessage{text: "GENERATE"})
 
-	input = append(input,
-		stringResponseItem(fmt.Sprintf("STATUS\n%s", statusOutput)),
-	)
-
-	for patch, err := range statusChanges {
-		if err != nil {
-			return err
-		}
-
-		input = append(input, stringResponseItem(patch))
-	}
-
-	input = append(input, stringResponseItem("GENERATE"))
-
-	respParams := responses.ResponseNewParams{
-		Model:        recv.config.model,
-		Instructions: param.NewOpt(instructions),
-		Input: responses.ResponseNewParamsInputUnion{
-			OfInputItemList: input,
-		},
-	}
-
-	if len(recv.config.reasoning) > 0 {
-		respParams.Reasoning = shared.ReasoningParam{
-			Effort: shared.ReasoningEffort(recv.config.reasoning),
-		}
-	}
-
-	stream := recv.client.Responses.NewStreaming(
-		ctx, respParams,
-	)
-	for stream.Next() {
-		cur := stream.Current()
-		if _, err := dst.Write([]byte(cur.Delta)); err != nil {
-			return err
-		}
-
-		tokensIn += cur.Response.Usage.InputTokens
-		tokensOut += cur.Response.Usage.OutputTokens
-	}
-
-	if err := stream.Err(); err != nil {
+	tokensIn, tokensOut, err := recv.backend.streamOutput(ctx, instructions, msgs, dst)
+	if err != nil {
 		return err
 	}
 
@@ -443,29 +319,26 @@ func (recv *LLM) ExplainStatus(
 	return nil
 }
 
-func (recv *LLM) retrieveContextTurn() (*responses.ResponseInputItemUnionParam, error) {
+func (recv *LLM) langString() string {
+	if recv.config.outputLang != nil {
+		return recv.config.outputLang.String()
+	}
+	return defaultLang.String()
+}
+
+func (recv *LLM) retrieveContextText() string {
+	if recv.config.contextLoader == nil {
+		return ""
+	}
 	rc, err := recv.config.contextLoader.LoadContextFile()
 	if err != nil {
-		return nil, err
+		return ""
 	}
-
 	defer rc.Close()
-
-	msg := bytes.NewBufferString("CONTEXT\n")
-
-	_, err = io.Copy(msg, rc)
-	if err != nil {
-		return nil, err
-	}
-
-	return &responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(msg.String()),
-			},
-		},
-	}, nil
+	var sb strings.Builder
+	sb.WriteString("CONTEXT\n")
+	io.Copy(&sb, rc) //nolint:errcheck
+	return sb.String()
 }
 
 func execInstructionTmpl(t *template.Template, data any) (string, error) {
@@ -473,31 +346,5 @@ func execInstructionTmpl(t *template.Template, data any) (string, error) {
 	if err := t.Execute(dst, data); err != nil {
 		return "", err
 	}
-
 	return dst.String(), nil
-}
-
-func gitDoContextMsg(subcommand string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(fmt.Sprintf(
-					"COMMAND\nThis is being invoked by the `%s` command.", subcommand,
-				),
-				),
-			},
-		},
-	}
-}
-
-func stringResponseItem(str string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(str),
-			},
-		},
-	}
 }

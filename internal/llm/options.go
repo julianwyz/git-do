@@ -1,8 +1,9 @@
 package llm
 
 import (
+	"net/http"
+
 	"github.com/julianwyz/git-do/internal/git"
-	"github.com/openai/openai-go/v3/option"
 	"golang.org/x/text/language"
 )
 
@@ -15,7 +16,7 @@ type (
 		model         string
 		reasoning     ReasoningLevel
 		contextLoader contextLoader
-		http          option.HTTPClient
+		http          *http.Client
 	}
 
 	commitConfig struct {
@@ -43,7 +44,7 @@ func CommitWithResolutions(rs ...string) CommitOpt {
 	}
 }
 
-func WithHTTPClient(c option.HTTPClient) LLMOpt {
+func WithHTTPClient(c *http.Client) LLMOpt {
 	return func(lc *llmConfig) error {
 		lc.http = c
 
