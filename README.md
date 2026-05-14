@@ -73,7 +73,7 @@ format = "github"
 
 #### LLM Configuration
 
-`git do` utilizes the OpenAI API standard. Any API that conforms to this standard may be used, including local models through tools like [Ollama](https://ollama.com/).
+`git do` supports any Anthropic-hosted model or any model accessible via an API that conforms to the OpenAI standard. This includes local models hosted through tools like [Ollama](https://ollama.com/)!
 
 ### Credentials file
 
