@@ -23,6 +23,7 @@ func newAnthropicProvider(cfg *llmConfig) (*anthropicProvider, error) {
 		anthropicopt.WithBaseURL(cfg.apiBase),
 		anthropicopt.WithHTTPClient(cfg.http),
 	)
+
 	return &anthropicProvider{
 		client:    c,
 		model:     cfg.model,
@@ -57,6 +58,7 @@ func (p *anthropicProvider) generateCommit(ctx context.Context, instructions str
 			text += block.Text
 		}
 	}
+
 	return text, nil
 }
 
@@ -83,6 +85,7 @@ func (p *anthropicProvider) generateCommitBeta(ctx context.Context, instructions
 			text += block.Text
 		}
 	}
+
 	return text, nil
 }
 
@@ -115,6 +118,7 @@ func (p *anthropicProvider) streamOutput(ctx context.Context, instructions strin
 	if err := stream.Err(); err != nil {
 		return 0, 0, err
 	}
+
 	return acc.Usage.InputTokens, acc.Usage.OutputTokens, nil
 }
 
@@ -143,6 +147,7 @@ func (p *anthropicProvider) streamOutputBeta(ctx context.Context, instructions s
 	if err := stream.Err(); err != nil {
 		return 0, 0, err
 	}
+
 	return acc.Usage.InputTokens, acc.Usage.OutputTokens, nil
 }
 
@@ -151,6 +156,7 @@ func buildMessages(msgs []llmMessage) []anthropic.MessageParam {
 	for i, m := range msgs {
 		result[i] = anthropic.NewUserMessage(anthropic.NewTextBlock(m.text))
 	}
+
 	return result
 }
 
@@ -159,5 +165,6 @@ func buildBetaMessages(msgs []llmMessage) []anthropic.BetaMessageParam {
 	for i, m := range msgs {
 		result[i] = anthropic.NewBetaUserMessage(anthropic.NewBetaTextBlock(m.text))
 	}
+
 	return result
 }

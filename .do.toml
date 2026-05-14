@@ -4,7 +4,7 @@ language = "en-US"
 
 [llm]
 api_base = "https://api.anthropic.com"
-model    = "claude-sonnet-4-6"
+model    = "claude-haiku-4-5"
 
 [llm.context]
 file = "AGENTS.md"

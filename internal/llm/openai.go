@@ -23,6 +23,7 @@ func newOpenAIProvider(cfg *llmConfig) (*openaiProvider, error) {
 		option.WithAPIKey(cfg.apiKey),
 		option.WithHTTPClient(cfg.http),
 	)
+
 	return &openaiProvider{
 		client:    &c,
 		model:     cfg.model,
@@ -35,6 +36,7 @@ func (p *openaiProvider) generateCommit(ctx context.Context, instructions string
 	if err != nil {
 		return "", err
 	}
+
 	return resp.OutputText(), nil
 }
 
@@ -49,6 +51,7 @@ func (p *openaiProvider) streamOutput(ctx context.Context, instructions string, 
 		tokensIn += cur.Response.Usage.InputTokens
 		tokensOut += cur.Response.Usage.OutputTokens
 	}
+
 	return tokensIn, tokensOut, stream.Err()
 }
 
@@ -76,6 +79,7 @@ func (p *openaiProvider) buildParams(instructions string, msgs []llmMessage) res
 			Effort: shared.ReasoningEffort(effort),
 		}
 	}
+
 	return rp
 }
 

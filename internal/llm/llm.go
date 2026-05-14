@@ -323,6 +323,7 @@ func (recv *LLM) langString() string {
 	if recv.config.outputLang != nil {
 		return recv.config.outputLang.String()
 	}
+
 	return defaultLang.String()
 }
 
@@ -338,6 +339,7 @@ func (recv *LLM) retrieveContextText() string {
 	var sb strings.Builder
 	sb.WriteString("CONTEXT\n")
 	io.Copy(&sb, rc) //nolint:errcheck
+
 	return sb.String()
 }
 
@@ -346,5 +348,6 @@ func execInstructionTmpl(t *template.Template, data any) (string, error) {
 	if err := t.Execute(dst, data); err != nil {
 		return "", err
 	}
+
 	return dst.String(), nil
 }
