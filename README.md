@@ -1,119 +1,176 @@
 # git-do
 
-`git-do` is an extension for `git` to give your commit messages some extra ✨ pizzazz ✨ with the help of AI.
+`git-do` is a Git CLI extension that automates commit messages and explains code changes using LLMs. It adds a `do` subcommand to `git` and works with any OpenAI-compatible API, including OpenAI, Anthropic, and local models via Ollama.
 
-> [!NOTE]  
+> [!NOTE]
 > `git do` is still experimental and subject to change. While I don't expect there to be any _huge_ breaking changes, be aware that there _may_ be breaking changes introduced until a formal `v1` is released.
 
 ## What does (g)it _do_?
 
-`git-do` adds a `do` subcommand to your `git` CLI. It connects to any Large Language Model API that conforms to the [OpenAI API Spec](https://github.com/openai/openai-openapi) to automate and enhance common git workflows.
+`git-do` connects to an LLM to handle the parts of your git workflow that benefit from understanding code: writing commit messages, explaining diffs, and summarizing what's changed.
 
 ### Commands
 
-| Command          | What does it do?                                                                   |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| `git do commit`  | Generate a commit message of your staged changes and automatically commit.         |
-| `git do explain` | Explain the changes made in a commit, or range of commits.                         |
-| `git do init`    | Initialize the `git do` tool and setup the project config file.                    |
-| `git do status`  | Enhanced version of `git status` that includes a brief explanation of the changes. |
-
-You can see all, detailed, usage information by running `git do help`.
+| Command          | What it does                                                                   |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `git do commit`  | Generate a commit message for staged changes and commit.                       |
+| `git do explain` | Explain the changes in a commit or range of commits.                           |
+| `git do status`  | `git status` with an LLM-generated summary of what changed and why it matters. |
+| `git do init`    | Set up `git-do` for a project (creates the config file and credentials entry). |
+| `git do help`    | Show detailed usage for all commands.                                          |
 
 ## Installing
-
-### From source
-
-Compile the CLI using Go:
 
 ```sh
 go install github.com/julianwyz/git-do/cmd/git-do@latest
 ```
 
-Then move the binary to your system's `$PATH`. It will then be available at `git do ...`.
+The binary name is `git-do`. Because Git treats any `git-<subcommand>` binary on your `$PATH` as a subcommand, it becomes available as `git do` automatically.
 
 ## Getting started
 
-Once you've installed the CLI, run `git do init` in your project's directory. This will setup the project-level configuration, your [user credentials](#credentials-file) for accessing LLM services and will even initialize an empty `git` repo if you haven't done so already.
+### 1. Initialize a project
 
-### Configuration
+Run `git do init` inside any Git repository. It walks you through picking an LLM provider and model, writes a `.do.toml` config file to your project, and sets up your API key in `~/.gitdo/credentials`.
 
-After running `git do init`, a `.do.toml` file will be created in your directory.
+```sh
+cd my-project
+git do init
+```
 
-The available options are:
+### 2. Stage your changes
+
+`git-do` works on whatever is staged, just like `git commit`.
+
+```sh
+git add -p   # or git add <files>
+```
+
+### 3. Generate a commit
+
+```sh
+git do commit
+```
+
+`git-do` sends your staged diff and optional project context to the LLM, receives a structured commit message, prints it for review, and commits. The message follows whichever format you configured (`github` or `conventional`).
+
+### Explaining commits
+
+```sh
+# Explain the last commit
+git do explain HEAD
+
+# Explain a range of commits
+git do explain main..my-branch
+
+# Explain a specific commit by hash
+git do explain abc1234
+```
+
+### Enhanced status
+
+```sh
+git do status
+```
+
+Runs `git status` and appends an LLM-generated plain-English summary of what's changed. Useful for picking up a half-finished branch or reviewing before a PR.
+
+## Configuration
+
+### Project config (`.do.toml`)
+
+After `git do init`, a `.do.toml` appears in your project directory. Commit this file alongside your code; it defines how `git-do` behaves for everyone working in the repo.
 
 ```toml
-# The config file version. "1" is the only accepted value.
+# Config file version. "1" is the only accepted value.
 version = "1"
 
-# A BCP 47 language tag that will be provided to the LLM.
-# When used with multi-lingual models, all generated content will be in this language.
+# BCP 47 language tag. All LLM output will be in this language.
 language = "en-US"
 
 [llm]
-# The base URL to access the LLM API.
+# Base URL for the LLM API.
 api_base = "https://api.openai.com/v1"
-# The model to use.
-model = "gpt-5-mini"
+# Model to use.
+model = "gpt-4o-mini"
 
 [llm.context]
-# An optional file that will be provided to the LLM to provide
-# context on your project and to tune responses.
+# Optional: a file whose contents are sent to the LLM as project context.
+# Use this to tune responses: describe your team's conventions, the codebase
+# domain, commit message preferences, etc.
 file = "CONTEXT.md"
 
 [llm.reasoning]
-# Optionally specify the intensity of reasoning models.
+# Reasoning effort for models that support it.
+# Values: none | minimal | low | medium | high | xhigh
 level = "low"
 
 [commit]
-# The commit message standard to use.
-# Supported values: "github", "conventional"
+# Commit message format.
+# "github"       - subject line + bullet-point body
+# "conventional" - Conventional Commits (feat:, fix:, chore:, etc.)
 format = "github"
 ```
 
-#### LLM Configuration
+#### Project context file
 
-`git do` supports any Anthropic-hosted model or any model accessible via an API that conforms to the OpenAI standard. This includes local models hosted through tools like [Ollama](https://ollama.com/)!
+The `[llm.context]` file is one of the most useful features. Point it at any Markdown file and its contents are included in every prompt. Use it to tell the LLM things like:
 
-### Credentials file
+- What your project does and its domain terminology
+- Your team's commit message conventions or preferences
+- Common patterns to follow or avoid
 
-The `git do` credentials file is located at: `$HOME/.gitdo/credentials`.
+The project itself uses an `AGENTS.md` file for this; see [AGENTS.md](./AGENTS.md) for a real example.
 
-This file is interpreted as an [INI file](https://en.wikipedia.org/wiki/INI_file). For example:
+#### Supported LLM providers
+
+`git-do` works with any API that conforms to the OpenAI spec, plus Anthropic natively:
+
+| Provider                  | `api_base`                  |
+| ------------------------- | --------------------------- |
+| OpenAI                    | `https://api.openai.com/v1` |
+| Anthropic                 | `https://api.anthropic.com` |
+| Ollama (local)            | `http://localhost:11434/v1` |
+| Any OpenAI-compatible API | your endpoint               |
+
+### Credentials (`~/.gitdo/credentials`)
+
+API keys live in `~/.gitdo/credentials` as an INI file, separate from your project config so keys are never committed to source control.
 
 ```ini
 [default]
-api_key = hello_world
+api_key = sk-...
 ```
 
-The `default` section will be used for all API calls to the LLM API unless there is a matching hostname defined in your credentials.
-
-When interacting with a `git do` project that is configured with an `api_base` of `https://api.openai.com/v1`, a section with the key `api.openai.com` will be used instead.
+You can store keys for multiple providers. The section key is the hostname of the `api_base`:
 
 ```ini
 [default]
-api_key = hello_world
+api_key = sk-...
 
 [api.openai.com]
-api_key = something_else
+api_key = sk-openai-...
+
+[api.anthropic.com]
+api_key = sk-ant-...
 ```
 
-This allows you to easily use `git do` in multiple projects with multiple LLM providers simultaneously.
+When `git-do` makes a request, it looks for a credentials section matching the `api_base` hostname. If none matches, it falls back to `[default]`. This lets you use different providers across different projects without any extra setup.
 
 ## Motivation
 
-> [Commit messages to me are almost as important as the code change itself.](<(https://linux.slashdot.org/story/20/07/03/2133201/linus-torvalds-i-do-no-coding-any-more#:~:text=commit%20messages%20to%20me%20are%20almost%20as%20important%20as%20the%20code%20change%20itself.)>)
+> [Commit messages to me are almost as important as the code change itself.](https://linux.slashdot.org/story/20/07/03/2133201/linus-torvalds-i-do-no-coding-any-more#:~:text=commit%20messages%20to%20me%20are%20almost%20as%20important%20as%20the%20code%20change%20itself.)
 >
 > \- Linus Torvalds
 
-We all know that git commit messages are important. A good commit message can help document your code, educate new-comers to a codebase and is an all-around _good thing_.
+We all know that git commit messages are important. A good commit message documents intent, educates newcomers, and makes `git log` useful months later.
 
-We also all know that commit messages have a tendency to get... well... I think [XKCD summed it up best](https://xkcd.com/1296/):
+We also all know how they tend to go in practice. [XKCD summed it up best](https://xkcd.com/1296/):
 
 ![xkcd-1296](./.github/assets/xkcd-1296.png)
 
-This is the core motivation behind `git-do`. It is designed to easily integrate into your workflow and help you craft more robust, accurate and informative commit messages.
+`git-do` is designed to fit naturally into an existing workflow: no new tooling layer, no UI, just an extra subcommand. Stage your changes, run `git do commit`, and get a message that actually says something.
 
 ## Contributing
 
-Thanks for considering contributing to this project! Feel free to open Github Issues and/or Pull Requests with any contribution you may have. More info is available in [CONTRIBUTING.md](./CONTRIBUTING.md).
+Thanks for considering contributing! Feel free to open GitHub Issues and Pull Requests. More info is in [CONTRIBUTING.md](./CONTRIBUTING.md).
